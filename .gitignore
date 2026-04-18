@@ -42,3 +42,6 @@ mysql_data/
 
 # Upload temp
 backend/uploads/
+
+# Claude Code
+.claude/
