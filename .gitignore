@@ -45,3 +45,6 @@ backend/uploads/
 
 # Claude Code
 .claude/
+
+# Documentação local de commits (gerada automaticamente, não versionada)
+docs/commits/

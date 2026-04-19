@@ -312,7 +312,33 @@ Antes de considerar qualquer feature concluída, verificar:
 - [ ] Notificação disparada se a ação gera comunicação
 - [ ] Migration de banco criada (se há mudança de schema)
 - [ ] Swagger atualizado (decorators no controller e DTOs)
-- [ ] Filtro `status \!= 'ANULADA'` aplicado em queries de relatório/listagem
+- [ ] Filtro `status != 'ANULADA'` aplicado em queries de relatório/listagem
+- [ ] **Arquivo de documentação criado em `docs/commits/NN-escopo.md`** (gerado localmente, não versionado)
+
+---
+
+## 12. Convenção de Documentação de Commits
+
+**Todo commit deve ter um arquivo `.md` correspondente em `docs/commits/`.**
+
+A pasta `docs/commits/` está no `.gitignore` — os arquivos existem apenas localmente
+para consulta do desenvolvedor e não são enviados ao repositório remoto.
+
+### Estrutura obrigatória do documento
+1. **Contexto e necessidade** — qual problema resolve e por que agora
+2. **Arquivos criados/modificados** — lista com propósito de cada um
+3. **Conceitos-chave** — vocabulário técnico explicado sem assumir conhecimento prévio
+4. **Passo a passo** — como implementar do zero, com comandos e trechos de código
+5. **Decisões de design** — tabela com decisão, alternativa e motivo
+6. **Perguntas prováveis do professor** — formato P:/Resposta
+
+### Nomeação do arquivo
+```
+docs/commits/NN-escopo-descricao-curta.md
+```
+
+Use o template em `docs/commits/_template.md` como ponto de partida.
+Atualize o índice em `docs/commits/README.md` a cada novo documento.
 
 ---
 
