@@ -45,9 +45,10 @@ function createGuardianMock(overrides: Partial<Guardian> = {}): Guardian {
 }
 
 const mockStudentsRepo = () => ({
-  findOne:     jest.fn(),
+  findOne:      jest.fn(),
   findAndCount: jest.fn(),
-  softDelete:  jest.fn().mockResolvedValue({}),
+  save:         jest.fn(async (s: any) => s),
+  softDelete:   jest.fn().mockResolvedValue({}),
 });
 
 const mockGuardiansRepo = () => ({

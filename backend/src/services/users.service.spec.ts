@@ -109,9 +109,13 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(adminUser);
       // queryBuilder.getCount retorna 1 (último admin)
       repo.createQueryBuilder.mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getCount: jest.fn().mockResolvedValue(1),
+        where:          jest.fn().mockReturnThis(),
+        andWhere:       jest.fn().mockReturnThis(),
+        orderBy:        jest.fn().mockReturnThis(),
+        skip:           jest.fn().mockReturnThis(),
+        take:           jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+        getCount:       jest.fn().mockResolvedValue(1),
       });
       await expect(service.remove('outro-admin', TENANT_ID, ADMIN_USER_ID))
         .rejects.toThrow(BadRequestException);
