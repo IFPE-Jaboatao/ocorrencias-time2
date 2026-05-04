@@ -1,0 +1,46 @@
+# Dependências
+node_modules/
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Variáveis de ambiente (nunca commitar segredos)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cobertura de testes
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Docker
+*.dockerignore
+
+# Claude Code (configurações locais, não compartilhar)
+.claude/settings.local.json
+
+# Documentos binários (manter no repositório os .md, não os .docx/.pdf)
+*.docx
+*.pdf
