@@ -1119,6 +1119,36 @@ o contêiner só precisa ser reiniciado.
 **Solução 2:** Persistir configurações no `docker-compose.yml` via `command:` em vez de
 `SET GLOBAL` temporário (ver H-18).
 
+### H-21: `@InjectDataSource()` usa token específico nos testes — não usar string `'DataSource'`
+**Problema:** `@InjectDataSource()` do TypeORM NestJS não usa a string `'DataSource'` como token.
+Ao mockar o `DataSource` em testes unitários com `{ provide: 'DataSource', useValue: mock }`,
+o NestJS lança `Can't resolve dependencies... argument DataSource at index [1] is not available`.
+
+**Solução:** Usar `getDataSourceToken()` importado de `@nestjs/typeorm`:
+
+```typescript
+import { getDataSourceToken } from '@nestjs/typeorm';
+
+{ provide: getDataSourceToken(), useValue: { query: jest.fn() } }
+```
+
+### H-22: Mock de repositório TypeORM com filtros de `where` — não testar o filtro no mock
+**Problema:** Quando o service faz `repo.findOne({ where: { email, ativo: true } })`,
+o mock retorna o valor configurado **independentemente** do argumento passado.
+Se o mock retornar um usuário com `ativo: false`, o serviço ainda o recebe e
+não lança NotFoundException — pois a filtragem acontece no banco, não no código.
+
+**Solução:** Simular o comportamento do banco no mock: retornar `null` para representar
+"nenhum registro encontrou essa condição" — não retornar o objeto com o campo incorreto.
+
+```typescript
+// ❌ ERRADO — mock retorna user, service não lança exceção
+usuarioRepo.findOne.mockResolvedValue(makeUsuario({ ativo: false }));
+
+// ✅ CORRETO — null simula "WHERE ativo=true não encontrou nada"
+usuarioRepo.findOne.mockResolvedValue(null);
+```
+
 ### H-20: `DB_PORT` no `.env` é a porta do host; dentro do Docker é sempre 3306
 **Problema:** O `.env` define `DB_PORT=3307` (porta mapeada no host para evitar conflito com
 MySQL local). Dentro da rede Docker, o backend deve conectar em `db:3306`. Se o backend
