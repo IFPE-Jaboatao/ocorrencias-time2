@@ -7,9 +7,12 @@ RUN npm ci
 
 COPY . .
 
-# NEXT_PUBLIC_API_URL é injetada em build time via ARG
+# Variáveis públicas injetadas em build time (baked no bundle do Next.js)
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+ARG NEXT_PUBLIC_DEV_LOGIN_ENABLED=false
+ENV NEXT_PUBLIC_DEV_LOGIN_ENABLED=$NEXT_PUBLIC_DEV_LOGIN_ENABLED
 
 RUN npm run build
 

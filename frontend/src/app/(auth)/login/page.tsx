@@ -12,7 +12,7 @@ const DEV_USERS = [
   { label: 'Admin',        email: 'admin@escola.edu.br' },
 ];
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = process.env.NEXT_PUBLIC_DEV_LOGIN_ENABLED === 'true';
 
 export default function LoginPage() {
   const router = useRouter();
