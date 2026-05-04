@@ -1149,6 +1149,45 @@ usuarioRepo.findOne.mockResolvedValue(makeUsuario({ ativo: false }));
 usuarioRepo.findOne.mockResolvedValue(null);
 ```
 
+### H-23: `@Throttle({ default: {...} })` sobrescreve o limite global mesmo em testes E2E
+**Problema:** O endpoint `POST /auth/magic-link` tem `@Throttle({ default: { ttl: 60_000, limit: 3 } })`.
+Mesmo que o `ThrottlerModule.forRoot` configure um limite alto no app de teste, o decorator
+sobrescreve para 3 — causando HTTP 429 nos testes que chamam o endpoint múltiplas vezes.
+
+**Solução:** Substituir o `ThrottlerGuard` por um guard no-op no app de teste.
+Rate limit é comportamento de infraestrutura, não de negócio — testar nos unit tests se necessário.
+
+```typescript
+// test/helpers/create-test-app.ts
+@Injectable()
+class NoopThrottleGuard implements CanActivate {
+  canActivate() { return true; }
+}
+
+// no TestingModule:
+{ provide: APP_GUARD, useClass: NoopThrottleGuard },  // não registrar ThrottlerGuard
+```
+
+### H-24: `codigo_sequencia` não é entity TypeORM — `synchronize: true` não a cria
+**Problema:** A tabela `codigo_sequencia` é criada por migration SQL pura (INSERT atômico).
+Com `synchronize: true` no banco de teste, o TypeORM cria apenas as entidades declaradas.
+O método `gerarCodigo()` falha com erro de "table doesn't exist" durante os testes E2E.
+
+**Solução:** Criar a tabela no `globalSetup` antes dos testes, e truncá-la junto com as demais
+tabelas entre execuções:
+
+```typescript
+// test/helpers/global-setup.ts
+await ds.query(`
+  CREATE TABLE IF NOT EXISTS codigo_sequencia (
+    ano      INT        NOT NULL,
+    segmento VARCHAR(2) NOT NULL,
+    ultimo_seq INT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (ano, segmento)
+  )
+`);
+```
+
 ### H-20: `DB_PORT` no `.env` é a porta do host; dentro do Docker é sempre 3306
 **Problema:** O `.env` define `DB_PORT=3307` (porta mapeada no host para evitar conflito com
 MySQL local). Dentro da rede Docker, o backend deve conectar em `db:3306`. Se o backend
