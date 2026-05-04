@@ -35,8 +35,6 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
-# Docker
-*.dockerignore
 
 # Claude Code (configurações locais, não compartilhar)
 .claude/settings.local.json
