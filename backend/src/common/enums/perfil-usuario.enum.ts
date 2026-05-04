@@ -1,0 +1,10 @@
+export enum PerfilUsuario {
+  PROFESSOR         = 'PROFESSOR',
+  COORDENADOR       = 'COORDENADOR',
+  EQUIPE_PEDAGOGICA = 'EQUIPE_PEDAGOGICA',
+  DIRETOR           = 'DIRETOR',
+  SECRETARIA        = 'SECRETARIA',
+  ADMIN             = 'ADMIN',
+  ALUNO             = 'ALUNO',
+  RESPONSAVEL_LEGAL = 'RESPONSAVEL_LEGAL',
+}
