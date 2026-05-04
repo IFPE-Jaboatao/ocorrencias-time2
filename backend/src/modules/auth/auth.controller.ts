@@ -1,11 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags }           from '@nestjs/swagger';
-import { Throttle }                                     from '@nestjs/throttler';
-import { AuthService }                                  from './auth.service';
-import { SolicitarMagicLinkDto }                        from './dto/solicitar-magic-link.dto';
-import { VerificarMagicLinkDto }                        from './dto/verificar-magic-link.dto';
-import { RefreshTokenDto }                              from './dto/refresh-token.dto';
-import { Public }                                       from '../../common/decorators/public.decorator';
+import { Body, Controller, ForbiddenException, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags }                               from '@nestjs/swagger';
+import { Throttle }                                                          from '@nestjs/throttler';
+import { AuthService }                                                       from './auth.service';
+import { SolicitarMagicLinkDto }                                             from './dto/solicitar-magic-link.dto';
+import { VerificarMagicLinkDto }                                             from './dto/verificar-magic-link.dto';
+import { RefreshTokenDto }                                                   from './dto/refresh-token.dto';
+import { Public }                                                            from '../../common/decorators/public.decorator';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -47,5 +47,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Revogar refresh token (logout)' })
   async logout(@Body() dto: RefreshTokenDto) {
     await this.authService.revogarRefreshToken(dto.refreshToken);
+  }
+
+  @Public()
+  @Post('dev-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '[DEV] Login direto por e-mail sem magic link — bloqueado em produção' })
+  async devLogin(@Body() dto: SolicitarMagicLinkDto) {
+    if (process.env.DEV_LOGIN_ENABLED !== 'true') {
+      throw new ForbiddenException('Endpoint disponível apenas em desenvolvimento');
+    }
+    return this.authService.devLogin(dto.email);
   }
 }

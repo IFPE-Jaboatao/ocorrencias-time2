@@ -19,4 +19,9 @@ export const authApi = {
 
   logout: (refreshToken: string) =>
     baseApi.post('/auth/logout', { refreshToken }).then(r => r.data),
+
+  devLogin: (email: string) =>
+    baseApi
+      .post<{ accessToken: string; refreshToken: string }>('/auth/dev-login', { email })
+      .then(r => r.data),
 };

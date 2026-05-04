@@ -80,6 +80,12 @@ export class AuthService {
     return this.emitirTokens(registro.usuario);
   }
 
+  async devLogin(email: string): Promise<{ accessToken: string; refreshToken: string }> {
+    const usuario = await this.usuarioRepo.findOne({ where: { email, ativo: true } });
+    if (!usuario) throw new NotFoundException('Usuário não encontrado ou inativo');
+    return this.emitirTokens(usuario);
+  }
+
   async revogarRefreshToken(rawRefresh: string): Promise<void> {
     const tokenHash = createHash('sha256').update(rawRefresh).digest('hex');
     await this.refreshTokenRepo.update({ tokenHash }, { revokedAt: new Date() });
