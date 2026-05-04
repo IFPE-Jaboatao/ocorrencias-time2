@@ -1,0 +1,225 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository }             from 'typeorm';
+import { subDays, parseISO, isAfter }         from 'date-fns';
+import { Ocorrencia }           from './entities/ocorrencia.entity';
+import { CreateOcorrenciaDto }  from './dto/create-ocorrencia.dto';
+import { FilterOcorrenciaDto }  from './dto/filter-ocorrencia.dto';
+import { AlunosService }        from '../alunos/alunos.service';
+import { CategoriasService }    from '../categorias/categorias.service';
+import { SlaService }           from '../sla/sla.service';
+import { AuthenticatedUser }    from '../../common/interfaces/authenticated-user.interface';
+import { PerfilUsuario }        from '../../common/enums/perfil-usuario.enum';
+import { StatusOcorrencia }     from '../../common/enums/status-ocorrencia.enum';
+import { Segmento }             from '../../common/enums/segmento.enum';
+import {
+  DATA_RETROATIVA_MAX_DIAS,
+  REINCIDENCIA_JANELA_DIAS,
+  REINCIDENCIA_LIMIAR,
+} from '../../common/constants/domain.constants';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
+import { EventEmitter2 }        from '@nestjs/event-emitter';
+
+// Transições válidas de status — P-03
+const TRANSICOES_VALIDAS: Record<StatusOcorrencia, StatusOcorrencia[]> = {
+  [StatusOcorrencia.ABERTA]:               [StatusOcorrencia.AGUARDANDO_VALIDACAO, StatusOcorrencia.EM_ACOMPANHAMENTO],
+  [StatusOcorrencia.AGUARDANDO_VALIDACAO]: [StatusOcorrencia.EM_ACOMPANHAMENTO,    StatusOcorrencia.REVISAO],
+  [StatusOcorrencia.EM_ACOMPANHAMENTO]:    [StatusOcorrencia.RESOLVIDA],
+  [StatusOcorrencia.RESOLVIDA]:            [StatusOcorrencia.ARQUIVADA,             StatusOcorrencia.EM_ACOMPANHAMENTO],
+  [StatusOcorrencia.ARQUIVADA]:            [],
+  [StatusOcorrencia.REVISAO]:              [StatusOcorrencia.ABERTA],
+};
+
+@Injectable()
+export class OcorrenciasService {
+  constructor(
+    @InjectRepository(Ocorrencia)
+    private readonly repo: Repository<Ocorrencia>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly alunosService: AlunosService,
+    private readonly categoriasService: CategoriasService,
+    private readonly slaService: SlaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  async criar(dto: CreateOcorrenciaDto, registrador: AuthenticatedUser): Promise<Ocorrencia> {
+    // RN-11: data retroativa > 90 dias exige aprovação do diretor
+    const dataIncidente = parseISO(dto.dataIncidente);
+    const limiteRetro   = subDays(new Date(), DATA_RETROATIVA_MAX_DIAS);
+    if (!dto.aprovacaoRetroativaDiretor && isAfter(limiteRetro, dataIncidente)) {
+      throw new BadRequestException('RN-11: Data retroativa > 90 dias exige aprovação do Diretor');
+    }
+
+    const aluno     = await this.alunosService.buscarPorId(dto.alunoId);
+    const categoria = await this.categoriasService.buscarPorId(dto.categoriaId);
+
+    // RN-01: aluno deve ter matrícula ativa
+    if (aluno.status !== 'ATIVO') {
+      throw new BadRequestException('RN-01: Aluno sem matrícula ativa');
+    }
+
+    // RN-07: professor não registra ocorrência de aluno de outro campus
+    if (registrador.perfil === PerfilUsuario.PROFESSOR && aluno.campus !== registrador.campus) {
+      throw new ForbiddenException('RN-07: Professores só podem registrar ocorrências do próprio campus');
+    }
+
+    const codigo   = await this.gerarCodigo(aluno.segmento);
+    const slaPrazo = this.slaService.calcularPrazo(new Date(), dto.severidade);
+
+    // Sev >= 4 vai direto para AGUARDANDO_VALIDACAO
+    const statusInicial = dto.severidade >= 4
+      ? StatusOcorrencia.AGUARDANDO_VALIDACAO
+      : StatusOcorrencia.ABERTA;
+
+    const ocorrencia = await this.repo.save(
+      this.repo.create({
+        codigo,
+        alunoId:       dto.alunoId,
+        registradorId: registrador.sub,
+        categoriaId:   dto.categoriaId,
+        subcategoria:  dto.subcategoria ?? null,
+        severidade:    dto.severidade,
+        dataIncidente,
+        local:         dto.local,
+        descricao:     dto.descricao,
+        status:        statusInicial,
+        slaPrazo,
+      }),
+    );
+
+    // RN-03: alerta de reincidência
+    const contagem = await this.contarReincidencias(dto.alunoId, dto.categoriaId);
+    if (contagem >= REINCIDENCIA_LIMIAR) {
+      this.eventEmitter.emit('ocorrencia.reincidencia', { ocorrencia, contagem });
+    }
+
+    this.eventEmitter.emit('ocorrencia.criada', { ocorrencia, aluno, categoria, registrador });
+
+    return ocorrencia;
+  }
+
+  async listar(filtros: FilterOcorrenciaDto, usuario: AuthenticatedUser): Promise<PaginatedResponseDto<Ocorrencia>> {
+    const qb = this.repo.createQueryBuilder('oc')
+      .leftJoinAndSelect('oc.aluno',      'aluno')
+      .leftJoinAndSelect('oc.categoria',  'cat')
+      .leftJoinAndSelect('oc.registrador','reg');
+
+    // H-08: scoping por perfil
+    switch (usuario.perfil) {
+      case PerfilUsuario.PROFESSOR:
+        qb.andWhere('oc.registradorId = :uid', { uid: usuario.sub });
+        break;
+      case PerfilUsuario.COORDENADOR:
+      case PerfilUsuario.EQUIPE_PEDAGOGICA:
+      case PerfilUsuario.SECRETARIA:
+        qb.andWhere('aluno.campus = :campus', { campus: usuario.campus });
+        break;
+      case PerfilUsuario.DIRETOR:
+      case PerfilUsuario.ADMIN:
+        break;
+      default:
+        throw new ForbiddenException('Perfil sem acesso a listagem de ocorrências');
+    }
+
+    if (filtros.status)    qb.andWhere('oc.status = :status',       { status:    filtros.status });
+    if (filtros.alunoId)   qb.andWhere('oc.alunoId = :alunoId',     { alunoId:   filtros.alunoId });
+    if (filtros.severidade) qb.andWhere('oc.severidade = :sev',     { sev:       filtros.severidade });
+
+    const [data, total] = await qb
+      .orderBy('oc.criadoEm', 'DESC')
+      .skip((filtros.page - 1) * filtros.pageSize)
+      .take(filtros.pageSize)
+      .getManyAndCount();
+
+    return PaginatedResponseDto.of(data, total, filtros.page, filtros.pageSize);
+  }
+
+  async buscarPorId(id: string, usuario: AuthenticatedUser): Promise<Ocorrencia> {
+    const oc = await this.repo.findOne({
+      where:     { id },
+      relations: ['aluno', 'categoria', 'registrador'],
+    });
+    if (!oc) throw new NotFoundException('Ocorrência não encontrada');
+
+    // Scoping básico: professor só vê suas próprias
+    if (usuario.perfil === PerfilUsuario.PROFESSOR && oc.registradorId !== usuario.sub) {
+      throw new ForbiddenException('Acesso negado a esta ocorrência');
+    }
+    return oc;
+  }
+
+  async alterarStatus(
+    id:       string,
+    novoStatus: StatusOcorrencia,
+    usuario:  AuthenticatedUser,
+    justificativa?: string,
+  ): Promise<Ocorrencia> {
+    const oc = await this.repo.findOneOrFail({ where: { id } });
+
+    // RN-12: arquivada é read-only
+    if (oc.status === StatusOcorrencia.ARQUIVADA) {
+      throw new ForbiddenException('RN-12: Ocorrência arquivada não pode ser alterada');
+    }
+
+    validarTransicao(oc.status, novoStatus);
+
+    // RN-04: reativação de resolvida/arquivada exige admin
+    if ([StatusOcorrencia.RESOLVIDA, StatusOcorrencia.ARQUIVADA].includes(oc.status)) {
+      if (usuario.perfil !== PerfilUsuario.ADMIN && !justificativa) {
+        throw new ForbiddenException('RN-04: Justificativa obrigatória para reabrir ocorrência resolvida/arquivada');
+      }
+    }
+
+    const atualizado = await this.repo.save({
+      ...oc,
+      status:        novoStatus,
+      dataResolucao: novoStatus === StatusOcorrencia.RESOLVIDA ? new Date() : oc.dataResolucao,
+    });
+
+    this.eventEmitter.emit('ocorrencia.status_alterado', { ocorrencia: atualizado, statusAnterior: oc.status, usuario });
+    return atualizado;
+  }
+
+  // H-13: geração atômica do código único
+  async gerarCodigo(segmento: Segmento): Promise<string> {
+    const prefixo: Record<Segmento, string> = {
+      [Segmento.FUNDAMENTAL]: 'FM',
+      [Segmento.MEDIO]:       'ME',
+      [Segmento.SUPERIOR]:    'SU',
+    };
+    const ano = new Date().getFullYear();
+    const sig = prefixo[segmento];
+
+    await this.dataSource.query(
+      `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE ultimo_seq = ultimo_seq + 1`,
+      [ano, sig],
+    );
+    const [{ ultimo_seq }] = await this.dataSource.query(
+      `SELECT ultimo_seq FROM codigo_sequencia WHERE ano = ? AND segmento = ?`,
+      [ano, sig],
+    );
+    return `OC-${ano}-${String(ultimo_seq).padStart(5, '0')}-${sig}`;
+  }
+
+  private async contarReincidencias(alunoId: string, categoriaId: string): Promise<number> {
+    const desde = subDays(new Date(), REINCIDENCIA_JANELA_DIAS);
+    return this.repo.createQueryBuilder('oc')
+      .where('oc.alunoId = :alunoId',     { alunoId })
+      .andWhere('oc.categoriaId = :catId', { catId: categoriaId })
+      .andWhere('oc.criadoEm >= :desde',   { desde })
+      .getCount();
+  }
+}
+
+function validarTransicao(atual: StatusOcorrencia, novo: StatusOcorrencia): void {
+  if (!TRANSICOES_VALIDAS[atual].includes(novo)) {
+    throw new BadRequestException(`Transição inválida: ${atual} → ${novo}`);
+  }
+}
