@@ -147,9 +147,25 @@ export class OcorrenciasService {
     });
     if (!oc) throw new NotFoundException('Ocorrência não encontrada');
 
-    // Scoping básico: professor só vê suas próprias
-    if (usuario.perfil === PerfilUsuario.PROFESSOR && oc.registradorId !== usuario.sub) {
-      throw new ForbiddenException('Acesso negado a esta ocorrência');
+    // H-08: scoping por perfil — C-02
+    switch (usuario.perfil) {
+      case PerfilUsuario.PROFESSOR:
+        if (oc.registradorId !== usuario.sub) {
+          throw new ForbiddenException('Acesso negado a esta ocorrência');
+        }
+        break;
+      case PerfilUsuario.COORDENADOR:
+      case PerfilUsuario.EQUIPE_PEDAGOGICA:
+      case PerfilUsuario.SECRETARIA:
+        if (oc.aluno?.campus !== usuario.campus) {
+          throw new ForbiddenException('Acesso negado: ocorrência de outro campus');
+        }
+        break;
+      case PerfilUsuario.DIRETOR:
+      case PerfilUsuario.ADMIN:
+        break; // visão global
+      default:
+        throw new ForbiddenException('Perfil sem acesso a ocorrências');
     }
     return oc;
   }
@@ -169,10 +185,13 @@ export class OcorrenciasService {
 
     validarTransicao(oc.status, novoStatus);
 
-    // RN-04: reativação de resolvida/arquivada exige admin
-    if ([StatusOcorrencia.RESOLVIDA, StatusOcorrencia.ARQUIVADA].includes(oc.status)) {
-      if (usuario.perfil !== PerfilUsuario.ADMIN && !justificativa) {
-        throw new ForbiddenException('RN-04: Justificativa obrigatória para reabrir ocorrência resolvida/arquivada');
+    // RN-04: reabrir ocorrência RESOLVIDA exige perfil ADMIN + justificativa
+    if (oc.status === StatusOcorrencia.RESOLVIDA && novoStatus === StatusOcorrencia.EM_ACOMPANHAMENTO) {
+      if (usuario.perfil !== PerfilUsuario.ADMIN) {
+        throw new ForbiddenException('RN-04: Apenas Admin pode reabrir ocorrência resolvida');
+      }
+      if (!justificativa?.trim()) {
+        throw new BadRequestException('RN-04: Justificativa obrigatória para reabrir ocorrência resolvida');
       }
     }
 
@@ -196,16 +215,19 @@ export class OcorrenciasService {
     const ano = new Date().getFullYear();
     const sig = prefixo[segmento];
 
+    // C-04: INSERT ... ON DUPLICATE KEY + LAST_INSERT_ID() garante atomicidade
+    // sem race condition — dois SELECTs separados não são thread-safe
     await this.dataSource.query(
       `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)
-       ON DUPLICATE KEY UPDATE ultimo_seq = ultimo_seq + 1`,
+       ON DUPLICATE KEY UPDATE ultimo_seq = LAST_INSERT_ID(ultimo_seq + 1)`,
       [ano, sig],
     );
-    const [{ ultimo_seq }] = await this.dataSource.query(
-      `SELECT ultimo_seq FROM codigo_sequencia WHERE ano = ? AND segmento = ?`,
-      [ano, sig],
+    const [{ seq }] = await this.dataSource.query(
+      `SELECT LAST_INSERT_ID() AS seq`,
     );
-    return `OC-${ano}-${String(ultimo_seq).padStart(5, '0')}-${sig}`;
+    // LAST_INSERT_ID() retorna 0 em INSERT bem-sucedido (primeira linha) — corrigir
+    const ultimoSeq = Number(seq) === 0 ? 1 : Number(seq);
+    return `OC-${ano}-${String(ultimoSeq).padStart(5, '0')}-${sig}`;
   }
 
   private async contarReincidencias(alunoId: string, categoriaId: string): Promise<number> {
@@ -218,11 +240,20 @@ export class OcorrenciasService {
   }
 
   /** RN-03 — histórico de reincidência do aluno nos últimos 30 dias */
-  async verificarReincidencias(alunoId: string): Promise<{
+  async verificarReincidencias(alunoId: string, usuario: AuthenticatedUser): Promise<{
     totalNoPeriodo: number;
     reincidente:    boolean;
     categorias:     { categoriaId: string; catNome: string; contagem: number; reincidente: boolean }[];
   }> {
+    // Verificar que o aluno existe e aplicar campus scoping (C-01)
+    const aluno = await this.alunosService.buscarPorId(alunoId);
+    if (
+      [PerfilUsuario.COORDENADOR, PerfilUsuario.EQUIPE_PEDAGOGICA, PerfilUsuario.SECRETARIA].includes(usuario.perfil) &&
+      aluno.campus !== usuario.campus
+    ) {
+      throw new ForbiddenException('Acesso negado: aluno de outro campus');
+    }
+
     const desde = subDays(new Date(), REINCIDENCIA_JANELA_DIAS);
     const rows  = await this.repo.createQueryBuilder('oc')
       .leftJoinAndSelect('oc.categoria', 'cat')

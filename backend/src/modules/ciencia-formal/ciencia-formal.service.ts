@@ -6,17 +6,6 @@ import { isAfter, addBusinessDays } from 'date-fns';
 import { CienciaFormal }   from './entities/ciencia-formal.entity';
 import { CIENCIA_FORMAL_TTL_DIAS_UTEIS } from '../../common/constants/domain.constants';
 
-function addBizDays(date: Date, days: number): Date {
-  const r = new Date(date);
-  let added = 0;
-  while (added < days) {
-    r.setDate(r.getDate() + 1);
-    const dow = r.getDay();
-    if (dow !== 0 && dow !== 6) added++;
-  }
-  return r;
-}
-
 @Injectable()
 export class CienciaFormalService {
   constructor(
@@ -47,7 +36,7 @@ export class CienciaFormalService {
     if (!ciencia) throw new NotFoundException('Token inválido');
     if (ciencia.dataConfirmacao) throw new BadRequestException('Token já utilizado');
 
-    const expira = addBizDays(ciencia.dataEnvio, CIENCIA_FORMAL_TTL_DIAS_UTEIS);
+    const expira = addBusinessDays(ciencia.dataEnvio, CIENCIA_FORMAL_TTL_DIAS_UTEIS);
     if (isAfter(new Date(), expira)) throw new BadRequestException('Token expirado');
 
     ciencia.dataConfirmacao = new Date();

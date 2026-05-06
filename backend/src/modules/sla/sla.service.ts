@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { addHours }   from 'date-fns';
+import { Injectable }              from '@nestjs/common';
+import { addHours, addBusinessDays } from 'date-fns';
 import {
   SLA_HORAS_CORRIDAS_SEV4,
   SLA_HORAS_CORRIDAS_SEV5,
@@ -7,18 +7,6 @@ import {
   SLA_DIAS_UTEIS_SEV2,
   SLA_DIAS_UTEIS_SEV3,
 } from '../../common/constants/domain.constants';
-
-// Adiciona dias úteis manualmente (seg-sex), sem lib externa
-function addBusinessDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  let added = 0;
-  while (added < days) {
-    result.setDate(result.getDate() + 1);
-    const dow = result.getDay();
-    if (dow !== 0 && dow !== 6) added++;
-  }
-  return result;
-}
 
 @Injectable()
 export class SlaService {

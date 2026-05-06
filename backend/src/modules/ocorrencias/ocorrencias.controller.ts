@@ -33,16 +33,22 @@ export class OcorrenciasController {
     return this.service.listar(filtros, user);
   }
 
+  // Rota específica DEVE vir antes de ':id' — evitar ambiguidade de segmento
+  @Get('alunos/:alunoId/reincidencias')
+  @Roles(PerfilUsuario.COORDENADOR, PerfilUsuario.EQUIPE_PEDAGOGICA, PerfilUsuario.DIRETOR, PerfilUsuario.ADMIN)
+  @ApiOperation({ summary: 'Verificar reincidência do aluno nos últimos 30 dias (RN-03)' })
+  @ApiResponse({ status: 403, description: 'Perfil sem permissão' })
+  verificarReincidencias(
+    @Param('alunoId') alunoId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.verificarReincidencias(alunoId, user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar ocorrência por ID' })
   buscarPorId(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.buscarPorId(id, user);
-  }
-
-  @Get('alunos/:alunoId/reincidencias')
-  @ApiOperation({ summary: 'Verificar reincidência do aluno nos últimos 30 dias (RN-03)' })
-  verificarReincidencias(@Param('alunoId') alunoId: string) {
-    return this.service.verificarReincidencias(alunoId);
   }
 
   @Patch(':id/status')

@@ -54,6 +54,11 @@ export class NotificacoesService {
 
     if (!menor || ocorrencia.severidade < SEVERIDADE_MINIMA_NOTIF_RESPONSAVEL) return;
 
+    // C-05: categoria pode dispensar notificação — a menos que seja obrigatorioLegal (P-07)
+    const categoria = ocorrencia.categoria as any;
+    const deveNotificar = categoria?.obrigatorioLegal || categoria?.exigeNotifResponsavel !== false;
+    if (!deveNotificar) return;
+
     const responsaveis = await this.responsaveisService.listarAtivosParaNotificacao(ocorrencia.alunoId);
     for (const resp of responsaveis) {
       setImmediate(() => this.enviarEmail(resp.email, ocorrencia, resp.nome, resp.id));
@@ -66,6 +71,7 @@ export class NotificacoesService {
     nomeResp:    string,
     respId:      string,
   ): Promise<void> {
+    // C-07: log criado como PENDENTE antes do envio — só promovido a ENVIADO se bem-sucedido
     const log = await this.repo.save(
       this.repo.create({
         ocorrenciaId:    ocorrencia.id,
@@ -73,7 +79,7 @@ export class NotificacoesService {
         destinatarioId:  respId,
         canal:           CanalNotificacao.EMAIL,
         evento:          'OCORRENCIA_CRIADA',
-        status:          StatusNotificacao.ENVIADO,
+        status:          StatusNotificacao.PENDENTE,
       }),
     );
 
@@ -84,6 +90,7 @@ export class NotificacoesService {
         subject: `Radar Acadêmico — Ocorrência ${ocorrencia.codigo}`,
         text:    `Prezado(a) ${nomeResp},\n\nUma ocorrência foi registrada para seu dependente.\nCódigo: ${ocorrencia.codigo}\nSeveridade: ${ocorrencia.severidade}\n\nAcesse o sistema para mais detalhes.`,
       });
+      await this.repo.update(log.id, { status: StatusNotificacao.ENVIADO });
     } catch (err) {
       this.logger.error(`Falha ao enviar e-mail para ${destEmail}: ${err}`);
       await this.repo.update(log.id, { status: StatusNotificacao.FALHOU });

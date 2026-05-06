@@ -5,11 +5,11 @@ import { useOcorrencias } from '@/lib/hooks/useOcorrencias';
 import { SeveridadeBadge } from '@/components/ocorrencias/SeveridadeBadge';
 import { SlaIndicator } from '@/components/ocorrencias/SlaIndicator';
 import Link from 'next/link';
-import type { StatusOcorrencia } from '@/types/ocorrencia.types';
+import type { StatusOcorrencia, Ocorrencia } from '@/types/ocorrencia.types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX, TriangleAlert } from 'lucide-react';
-import type { Ocorrencia } from '@/types/ocorrencia.types';
+import { STATUS_LABELS, STATUS_CORES } from '@/lib/constants/ocorrencia.constants';
 
 /** RN-03: detecta reincidência dentro dos dados carregados na página */
 function detectarReincidentes(ocorrencias: Ocorrencia[]): Set<string> {
@@ -26,24 +26,6 @@ function detectarReincidentes(ocorrencias: Ocorrencia[]): Set<string> {
   }
   return reincidentes;
 }
-
-const STATUS_LABELS: Record<StatusOcorrencia, string> = {
-  ABERTA:               'Aberta',
-  AGUARDANDO_VALIDACAO: 'Aguardando Validação',
-  EM_ACOMPANHAMENTO:    'Em Acompanhamento',
-  RESOLVIDA:            'Resolvida',
-  ARQUIVADA:            'Arquivada',
-  REVISAO:              'Revisão',
-};
-
-const STATUS_CORES: Record<StatusOcorrencia, string> = {
-  ABERTA:               'bg-blue-50 text-blue-700 ring-blue-200',
-  AGUARDANDO_VALIDACAO: 'bg-amber-50 text-amber-700 ring-amber-200',
-  EM_ACOMPANHAMENTO:    'bg-purple-50 text-purple-700 ring-purple-200',
-  RESOLVIDA:            'bg-green-50 text-green-700 ring-green-200',
-  ARQUIVADA:            'bg-gray-100 text-gray-500 ring-gray-200',
-  REVISAO:              'bg-orange-50 text-orange-700 ring-orange-200',
-};
 
 export default function OcorrenciasPage() {
   const [page, setPage]           = useState(1);

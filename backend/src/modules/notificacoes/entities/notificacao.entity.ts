@@ -2,7 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 't
 import { Ocorrencia } from '../../ocorrencias/entities/ocorrencia.entity';
 
 export enum CanalNotificacao  { EMAIL = 'EMAIL', IN_APP = 'IN_APP' }
-export enum StatusNotificacao { ENVIADO = 'ENVIADO', FALHOU = 'FALHOU', LIDO = 'LIDO' }
+export enum StatusNotificacao { PENDENTE = 'PENDENTE', ENVIADO = 'ENVIADO', FALHOU = 'FALHOU', LIDO = 'LIDO' }
 
 @Entity('notificacoes')
 export class Notificacao {
@@ -20,7 +20,7 @@ export class Notificacao {
   @Column({ type: 'enum', enum: CanalNotificacao })  canal: CanalNotificacao;
   @Column({ length: 100 }) evento: string;
 
-  @Column({ type: 'enum', enum: StatusNotificacao, default: StatusNotificacao.ENVIADO })
+  @Column({ type: 'enum', enum: StatusNotificacao, default: StatusNotificacao.PENDENTE })
   status: StatusNotificacao;
 
   @Column({ name: 'data_envio', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })

@@ -19,24 +19,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { StatusOcorrencia } from '@/types/ocorrencia.types';
-
-const STATUS_LABELS: Record<StatusOcorrencia, string> = {
-  ABERTA:               'Aberta',
-  AGUARDANDO_VALIDACAO: 'Aguardando Validação',
-  EM_ACOMPANHAMENTO:    'Em Acompanhamento',
-  RESOLVIDA:            'Resolvida',
-  ARQUIVADA:            'Arquivada',
-  REVISAO:              'Revisão',
-};
-
-const STATUS_CORES: Record<StatusOcorrencia, string> = {
-  ABERTA:               'bg-blue-50 text-blue-700 ring-blue-200',
-  AGUARDANDO_VALIDACAO: 'bg-amber-50 text-amber-700 ring-amber-200',
-  EM_ACOMPANHAMENTO:    'bg-purple-50 text-purple-700 ring-purple-200',
-  RESOLVIDA:            'bg-green-50 text-green-700 ring-green-200',
-  ARQUIVADA:            'bg-gray-100 text-gray-500 ring-gray-200',
-  REVISAO:              'bg-orange-50 text-orange-700 ring-orange-200',
-};
+import { STATUS_LABELS, STATUS_CORES, TRANSICOES_VALIDAS } from '@/lib/constants/ocorrencia.constants';
 
 const CIENCIA_CORES: Record<string, string> = {
   PENDENTE:   'text-gray-400',
@@ -390,7 +373,13 @@ export default function OcorrenciaDetailPage() {
             )}
             {podAlterarStatus && (
               <button
-                onClick={() => { setShowStatus(v => !v); setShowValidar(false); }}
+                onClick={() => {
+                  // I-04: inicializar com a primeira transição válida
+                  const validas = TRANSICOES_VALIDAS[oc.status] ?? [];
+                  if (validas.length > 0) setNovoStatus(validas[0]);
+                  setShowStatus(v => !v);
+                  setShowValidar(false);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
               >
                 Alterar status
@@ -472,7 +461,8 @@ export default function OcorrenciaDetailPage() {
               onChange={e => setNovoStatus(e.target.value as StatusOcorrencia)}
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              {(Object.keys(STATUS_LABELS) as StatusOcorrencia[]).map(s => (
+              {/* I-04: exibir apenas transições válidas para o status atual (P-03) */}
+              {(TRANSICOES_VALIDAS[oc.status] ?? []).map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </select>

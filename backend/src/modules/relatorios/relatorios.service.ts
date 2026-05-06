@@ -1,8 +1,10 @@
 import { Injectable }         from '@nestjs/common';
 import { InjectRepository }   from '@nestjs/typeorm';
 import { Repository }         from 'typeorm';
-import { Ocorrencia }         from '../ocorrencias/entities/ocorrencia.entity';
+import { differenceInYears }  from 'date-fns';
+import { Ocorrencia, CienciaFormalStatus } from '../ocorrencias/entities/ocorrencia.entity';
 import { FiltroRelatorioDto } from './dto/filtro-relatorio.dto';
+import { MAIORIDADE_LEGAL }   from '../../common/constants/domain.constants';
 
 export interface ResumoRelatorio {
   totalOcorrencias:  number;
@@ -125,10 +127,19 @@ export class RelatoriosService {
         new Date(oc.slaPrazo) < agora &&
         !['RESOLVIDA', 'ARQUIVADA'].includes(oc.status);
 
+      // C-03 / RN-10: pseudonimizar nome do aluno menor sem ciência formal confirmada (LGPD art. 13)
+      const eMenor = oc.aluno?.dataNascimento
+        ? differenceInYears(new Date(), new Date(oc.aluno.dataNascimento)) < MAIORIDADE_LEGAL
+        : false;
+      const semCiencia = oc.cienciaFormalStatus !== CienciaFormalStatus.CONFIRMADA;
+      const nomeAluno  = (eMenor && semCiencia)
+        ? `Aluno ${oc.alunoId.slice(0, 8).toUpperCase()}`
+        : (oc.aluno?.nome ?? '');
+
       return [
         oc.codigo,
         oc.dataIncidente ? String(oc.dataIncidente).slice(0, 10) : '',
-        oc.aluno?.nome ?? '',
+        nomeAluno,
         oc.aluno?.segmento ?? '',
         oc.aluno?.campus ?? '',
         oc.categoria?.nome ?? '',
