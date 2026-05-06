@@ -39,6 +39,12 @@ export class OcorrenciasController {
     return this.service.buscarPorId(id, user);
   }
 
+  @Get('alunos/:alunoId/reincidencias')
+  @ApiOperation({ summary: 'Verificar reincidência do aluno nos últimos 30 dias (RN-03)' })
+  verificarReincidencias(@Param('alunoId') alunoId: string) {
+    return this.service.verificarReincidencias(alunoId);
+  }
+
   @Patch(':id/status')
   @Roles(PerfilUsuario.COORDENADOR, PerfilUsuario.DIRETOR, PerfilUsuario.ADMIN)
   @ApiOperation({ summary: 'Alterar status da ocorrência (RF-06)' })

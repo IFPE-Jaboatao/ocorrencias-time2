@@ -16,6 +16,7 @@ import {
   ArrowLeft, MapPin, Calendar, FileText, ShieldCheck,
   CheckCircle2, RotateCcw, ArrowUpCircle, AlertCircle,
   ClipboardList, Plus, Clock, User, CheckSquare, XCircle,
+  TriangleAlert,
 } from 'lucide-react';
 import type { StatusOcorrencia } from '@/types/ocorrencia.types';
 
@@ -178,6 +179,13 @@ export default function OcorrenciaDetailPage() {
     enabled:  !!id,
   });
 
+  // Reincidência — buscar só quando a ocorrência estiver carregada
+  const { data: reincidencia } = useQuery({
+    queryKey: ['reincidencias', oc?.alunoId],
+    queryFn:  () => ocorrenciasApi.verificarReincidencias(oc!.alunoId),
+    enabled:  !!oc?.alunoId,
+  });
+
   // Form state — validação
   const [showValidar, setShowValidar] = useState(false);
   const [decisao, setDecisao]         = useState<TipoDecisao>('VALIDAR');
@@ -282,6 +290,27 @@ export default function OcorrenciaDetailPage() {
         <ArrowLeft size={16} />
         Voltar para ocorrências
       </button>
+
+      {/* ── Alerta de Reincidência (RN-03) ── */}
+      {reincidencia?.reincidente && (
+        <div className="flex items-start gap-3 rounded-2xl bg-red-50 border border-red-200 px-5 py-4">
+          <TriangleAlert size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-800">Alerta de Reincidência</p>
+            <p className="text-xs text-red-700 mt-0.5">
+              Este aluno possui {reincidencia.totalNoPeriodo} ocorrência{reincidencia.totalNoPeriodo !== 1 ? 's' : ''} nos últimos 30 dias,
+              com reincidência em:{' '}
+              {reincidencia.categorias
+                .filter(c => c.reincidente)
+                .map(c => `${c.catNome} (${c.contagem}×)`)
+                .join(', ')}.
+            </p>
+            <p className="text-xs text-red-500 mt-1">
+              Conforme RN-03, situações com ≥ 3 ocorrências da mesma categoria em 30 dias exigem atenção especial da equipe pedagógica.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Card principal ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

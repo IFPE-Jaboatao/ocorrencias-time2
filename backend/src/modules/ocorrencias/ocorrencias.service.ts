@@ -216,6 +216,42 @@ export class OcorrenciasService {
       .andWhere('oc.criadoEm >= :desde',   { desde })
       .getCount();
   }
+
+  /** RN-03 — histórico de reincidência do aluno nos últimos 30 dias */
+  async verificarReincidencias(alunoId: string): Promise<{
+    totalNoPeriodo: number;
+    reincidente:    boolean;
+    categorias:     { categoriaId: string; catNome: string; contagem: number; reincidente: boolean }[];
+  }> {
+    const desde = subDays(new Date(), REINCIDENCIA_JANELA_DIAS);
+    const rows  = await this.repo.createQueryBuilder('oc')
+      .leftJoinAndSelect('oc.categoria', 'cat')
+      .where('oc.alunoId = :alunoId', { alunoId })
+      .andWhere('oc.criadoEm >= :desde', { desde })
+      .getMany();
+
+    const byCategory: Record<string, { catNome: string; contagem: number }> = {};
+    for (const oc of rows) {
+      const key = oc.categoriaId;
+      if (!byCategory[key]) {
+        byCategory[key] = { catNome: oc.categoria?.nome ?? '—', contagem: 0 };
+      }
+      byCategory[key].contagem++;
+    }
+
+    const categorias = Object.entries(byCategory).map(([categoriaId, data]) => ({
+      categoriaId,
+      catNome:    data.catNome,
+      contagem:   data.contagem,
+      reincidente: data.contagem >= REINCIDENCIA_LIMIAR,
+    }));
+
+    return {
+      totalNoPeriodo: rows.length,
+      reincidente:    categorias.some(c => c.reincidente),
+      categorias,
+    };
+  }
 }
 
 function validarTransicao(atual: StatusOcorrencia, novo: StatusOcorrencia): void {

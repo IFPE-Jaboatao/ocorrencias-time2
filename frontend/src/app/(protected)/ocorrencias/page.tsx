@@ -8,7 +8,24 @@ import Link from 'next/link';
 import type { StatusOcorrencia } from '@/types/ocorrencia.types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX } from 'lucide-react';
+import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX, TriangleAlert } from 'lucide-react';
+import type { Ocorrencia } from '@/types/ocorrencia.types';
+
+/** RN-03: detecta reincidência dentro dos dados carregados na página */
+function detectarReincidentes(ocorrencias: Ocorrencia[]): Set<string> {
+  const contagem = new Map<string, string[]>(); // chave: alunoId__categoriaId → ids
+  for (const oc of ocorrencias) {
+    const key = `${oc.alunoId}__${oc.categoriaId}`;
+    const ids = contagem.get(key) ?? [];
+    ids.push(oc.id);
+    contagem.set(key, ids);
+  }
+  const reincidentes = new Set<string>();
+  for (const ids of contagem.values()) {
+    if (ids.length >= 3) ids.forEach(id => reincidentes.add(id));
+  }
+  return reincidentes;
+}
 
 const STATUS_LABELS: Record<StatusOcorrencia, string> = {
   ABERTA:               'Aberta',
@@ -117,7 +134,9 @@ export default function OcorrenciasPage() {
         </div>
       )}
 
-      {data && (
+      {data && (() => {
+        const reincidentes = detectarReincidentes(data.data);
+        return (
         <>
           {/* ── Tabela desktop ── */}
           <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -146,9 +165,16 @@ export default function OcorrenciasPage() {
                 {data.data.map(oc => (
                   <tr key={oc.id} className="hover:bg-blue-50/30 transition-colors group">
                     <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                        {oc.codigo}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          {oc.codigo}
+                        </span>
+                        {reincidentes.has(oc.id) && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 ring-1 ring-inset ring-red-200 px-1.5 py-0.5 rounded-full" title="Alerta de reincidência (RN-03)">
+                            <TriangleAlert size={10} /> Reincidência
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-gray-600 text-sm">
                       {format(parseISO(oc.dataIncidente), 'dd/MM/yyyy', { locale: ptBR })}
@@ -236,7 +262,9 @@ export default function OcorrenciasPage() {
             </div>
           )}
         </>
-      )}
+      );
+    })()}
+
     </div>
   );
 }

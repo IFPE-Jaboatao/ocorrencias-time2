@@ -22,6 +22,7 @@ import { EncaminhamentosModule } from './modules/encaminhamentos/encaminhamentos
 import { NotificacoesModule }   from './modules/notificacoes/notificacoes.module';
 import { CienciaFormalModule }  from './modules/ciencia-formal/ciencia-formal.module';
 import { DashboardModule }      from './modules/dashboard/dashboard.module';
+import { RelatoriosModule }     from './modules/relatorios/relatorios.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { DashboardModule }      from './modules/dashboard/dashboard.module';
     NotificacoesModule,
     CienciaFormalModule,
     DashboardModule,
+    RelatoriosModule,
   ],
   providers: [
     { provide: APP_GUARD,       useClass: ThrottlerGuard },

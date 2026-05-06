@@ -19,6 +19,17 @@ export interface FilterParams {
   pageSize?:  number;
 }
 
+export interface ReincidenciaInfo {
+  totalNoPeriodo: number;
+  reincidente:    boolean;
+  categorias: {
+    categoriaId: string;
+    catNome:     string;
+    contagem:    number;
+    reincidente: boolean;
+  }[];
+}
+
 export const ocorrenciasApi = {
   listar: (params?: FilterParams) =>
     api.get<PaginatedResponse<Ocorrencia>>('/ocorrencias', { params }).then(r => r.data),
@@ -31,4 +42,7 @@ export const ocorrenciasApi = {
 
   alterarStatus: (id: string, status: string, justificativa?: string) =>
     api.patch<Ocorrencia>(`/ocorrencias/${id}/status`, { status, justificativa }).then(r => r.data),
+
+  verificarReincidencias: (alunoId: string) =>
+    api.get<ReincidenciaInfo>(`/ocorrencias/alunos/${alunoId}/reincidencias`).then(r => r.data),
 };

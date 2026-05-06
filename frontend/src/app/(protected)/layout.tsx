@@ -6,16 +6,17 @@ import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, Plus,
   LogOut, Menu, X, Building2, ChevronRight,
-  Users, Tag,
+  Users, Tag, BarChart3,
 } from 'lucide-react';
 import { getCurrentUser, clearTokens, getRefreshToken } from '@/lib/auth/session';
 import { authApi } from '@/lib/api/auth.api';
 import type { AuthenticatedUser } from '@/types/ocorrencia.types';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; perfis?: string[] }[] = [
   { href: '/dashboard',        label: 'Dashboard',       icon: LayoutDashboard },
   { href: '/ocorrencias',      label: 'Ocorrências',     icon: AlertTriangle },
   { href: '/ocorrencias/nova', label: 'Nova Ocorrência', icon: Plus },
+  { href: '/relatorios',       label: 'Relatórios',      icon: BarChart3, perfis: ['COORDENADOR', 'EQUIPE_PEDAGOGICA', 'DIRETOR', 'SECRETARIA', 'ADMIN'] },
 ];
 
 const ADMIN_ITEMS = [
@@ -114,7 +115,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.filter(item => !item.perfis || (user && item.perfis.includes(user.perfil))).map(({ href, label, icon: Icon }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href) && href !== '/ocorrencias/nova');
             const exactActive = pathname === href;
             const isActive = href === '/ocorrencias/nova' ? exactActive : (href === '/dashboard' ? exactActive : active);
