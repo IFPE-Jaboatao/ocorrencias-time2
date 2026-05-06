@@ -82,7 +82,7 @@ export default function CienciaFormalPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-900 shadow-sm mb-3">
             <ShieldCheck size={24} className="text-white" />
           </div>
-          <h1 className="text-lg font-bold text-gray-900">SGOA</h1>
+          <h1 className="text-lg font-bold text-gray-900">Radar Acadêmico</h1>
           <p className="text-xs text-gray-500">Sistema de Gestão de Ocorrências Acadêmicas</p>
         </div>
 
@@ -185,7 +185,7 @@ export default function CienciaFormalPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          © SGOA — Sistema protegido conforme ECA e LGPD
+          © Radar Acadêmico — Sistema protegido conforme ECA e LGPD
         </p>
       </div>
     </div>

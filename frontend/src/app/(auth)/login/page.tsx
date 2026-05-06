@@ -66,9 +66,9 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 shadow-lg mb-6">
             <ShieldCheck size={32} className="text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">SGOA</h1>
+          <h1 className="text-4xl font-bold text-white mb-3">Radar Acadêmico</h1>
           <p className="text-slate-300 text-lg leading-relaxed">
-            Sistema de Gestão de Ocorrências Acadêmicas
+            Gestão de Ocorrências Acadêmicas
           </p>
           <div className="mt-10 space-y-3 text-left">
             {[
@@ -95,8 +95,8 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 shadow-lg mb-4">
               <ShieldCheck size={28} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">SGOA</h1>
-            <p className="text-sm text-gray-500 mt-1">Sistema de Gestão de Ocorrências Acadêmicas</p>
+            <h1 className="text-2xl font-bold text-gray-900">Radar Acadêmico</h1>
+            <p className="text-sm text-gray-500 mt-1">Gestão de Ocorrências Acadêmicas</p>
           </div>
 
           {/* Card de login */}

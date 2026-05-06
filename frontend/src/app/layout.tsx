@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'SGOA — Sistema de Gestão de Ocorrências Acadêmicas',
+  title: 'Radar Acadêmico — Gestão de Ocorrências',
   description: 'Gestão do ciclo de vida de ocorrências acadêmicas',
 };
 

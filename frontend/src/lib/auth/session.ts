@@ -2,8 +2,8 @@
 
 import { AuthenticatedUser } from '@/types/ocorrencia.types';
 
-const ACCESS_TOKEN_KEY  = 'sgoa_access';
-const REFRESH_TOKEN_KEY = 'sgoa_refresh';
+const ACCESS_TOKEN_KEY  = 'radar_access';
+const REFRESH_TOKEN_KEY = 'radar_refresh';
 
 export function saveTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem(ACCESS_TOKEN_KEY,  accessToken);

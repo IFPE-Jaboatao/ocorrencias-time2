@@ -88,7 +88,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-slate-700/50">
           <div>
-            <span className="text-white font-bold text-lg tracking-tight">SGOA</span>
+            <span className="text-white font-bold text-lg tracking-tight">Radar Acadêmico</span>
             <p className="text-slate-400 text-xs mt-0.5">Gestão de Ocorrências</p>
           </div>
           <button onClick={() => setSidebar(false)} className="md:hidden text-slate-400 hover:text-white p-1">
@@ -163,7 +163,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <button onClick={() => setSidebar(true)} className="text-gray-600 hover:text-gray-900 p-1">
             <Menu size={22} />
           </button>
-          <span className="font-bold text-gray-900">SGOA</span>
+          <span className="font-bold text-gray-900">Radar Acadêmico</span>
           <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold">
             {iniciais}
           </div>

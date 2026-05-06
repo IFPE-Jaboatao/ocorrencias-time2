@@ -81,7 +81,7 @@ export class NotificacoesService {
       await this.transporter.sendMail({
         from:    this.config.get('EMAIL_FROM'),
         to:      destEmail,
-        subject: `SGOA — Ocorrência ${ocorrencia.codigo}`,
+        subject: `Radar Acadêmico — Ocorrência ${ocorrencia.codigo}`,
         text:    `Prezado(a) ${nomeResp},\n\nUma ocorrência foi registrada para seu dependente.\nCódigo: ${ocorrencia.codigo}\nSeveridade: ${ocorrencia.severidade}\n\nAcesse o sistema para mais detalhes.`,
       });
     } catch (err) {

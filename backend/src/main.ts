@@ -33,7 +33,7 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('SGOA — Sistema de Gestão de Ocorrências Acadêmicas')
+      .setTitle('Radar Acadêmico — Gestão de Ocorrências')
       .setDescription('API REST para gestão do ciclo de vida de ocorrências acadêmicas')
       .setVersion('1.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'jwt')
