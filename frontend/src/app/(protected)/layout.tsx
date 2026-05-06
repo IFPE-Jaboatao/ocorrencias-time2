@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, Plus,
   LogOut, Menu, X, Building2, ChevronRight,
+  Users, Tag,
 } from 'lucide-react';
 import { getCurrentUser, clearTokens, getRefreshToken } from '@/lib/auth/session';
 import { authApi } from '@/lib/api/auth.api';
@@ -15,6 +16,11 @@ const NAV_ITEMS = [
   { href: '/dashboard',        label: 'Dashboard',       icon: LayoutDashboard },
   { href: '/ocorrencias',      label: 'Ocorrências',     icon: AlertTriangle },
   { href: '/ocorrencias/nova', label: 'Nova Ocorrência', icon: Plus },
+];
+
+const ADMIN_ITEMS = [
+  { href: '/admin/usuarios',   label: 'Usuários',        icon: Users },
+  { href: '/admin/categorias', label: 'Categorias',      icon: Tag },
 ];
 
 const PERFIL_COR: Record<string, string> = {
@@ -130,6 +136,35 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+
+          {/* Seção Admin */}
+          {user && ['ADMIN', 'DIRETOR'].includes(user.perfil) && (
+            <div className="pt-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-1">
+                Administração
+              </p>
+              {ADMIN_ITEMS.map(({ href, label, icon: Icon }) => {
+                const isActive = pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                      ${isActive
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }
+                    `}
+                  >
+                    <Icon size={17} className="flex-shrink-0" />
+                    <span>{label}</span>
+                    {isActive && <ChevronRight size={14} className="ml-auto opacity-70" />}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </nav>
 
         {/* User footer */}
