@@ -1,18 +1,19 @@
 interface Props { severidade: number; }
 
-const CONFIG: Record<number, { label: string; className: string }> = {
-  1: { label: 'Informativa',  className: 'bg-gray-100 text-gray-700' },
-  2: { label: 'Leve',         className: 'bg-blue-100 text-blue-700' },
-  3: { label: 'Moderada',     className: 'bg-yellow-100 text-yellow-800' },
-  4: { label: 'Grave',        className: 'bg-orange-100 text-orange-800' },
-  5: { label: 'Gravíssima',   className: 'bg-red-700 text-white' },
+const CONFIG: Record<number, { label: string; dot: string; badge: string }> = {
+  1: { label: 'Informativa', dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-600 ring-gray-200' },
+  2: { label: 'Leve',        dot: 'bg-blue-500',   badge: 'bg-blue-50 text-blue-700 ring-blue-200' },
+  3: { label: 'Moderada',    dot: 'bg-yellow-500', badge: 'bg-yellow-50 text-yellow-700 ring-yellow-200' },
+  4: { label: 'Grave',       dot: 'bg-orange-500', badge: 'bg-orange-50 text-orange-700 ring-orange-200' },
+  5: { label: 'Gravíssima',  dot: 'bg-red-600',    badge: 'bg-red-50 text-red-700 ring-red-200' },
 };
 
 export function SeveridadeBadge({ severidade }: Props) {
-  const config = CONFIG[severidade] ?? { label: String(severidade), className: 'bg-gray-100 text-gray-700' };
+  const c = CONFIG[severidade] ?? CONFIG[1];
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
-      Sev. {severidade} — {config.label}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset ${c.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.dot}`} />
+      {severidade} — {c.label}
     </span>
   );
 }

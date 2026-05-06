@@ -8,6 +8,7 @@ import Link from 'next/link';
 import type { StatusOcorrencia } from '@/types/ocorrencia.types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX } from 'lucide-react';
 
 const STATUS_LABELS: Record<StatusOcorrencia, string> = {
   ABERTA:               'Aberta',
@@ -16,6 +17,15 @@ const STATUS_LABELS: Record<StatusOcorrencia, string> = {
   RESOLVIDA:            'Resolvida',
   ARQUIVADA:            'Arquivada',
   REVISAO:              'Revisão',
+};
+
+const STATUS_CORES: Record<StatusOcorrencia, string> = {
+  ABERTA:               'bg-blue-50 text-blue-700 ring-blue-200',
+  AGUARDANDO_VALIDACAO: 'bg-amber-50 text-amber-700 ring-amber-200',
+  EM_ACOMPANHAMENTO:    'bg-purple-50 text-purple-700 ring-purple-200',
+  RESOLVIDA:            'bg-green-50 text-green-700 ring-green-200',
+  ARQUIVADA:            'bg-gray-100 text-gray-500 ring-gray-200',
+  REVISAO:              'bg-orange-50 text-orange-700 ring-orange-200',
 };
 
 export default function OcorrenciasPage() {
@@ -31,22 +41,35 @@ export default function OcorrenciasPage() {
   });
 
   return (
-    <div className="space-y-4 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Ocorrências</h1>
+    <div className="space-y-6 max-w-6xl mx-auto">
+
+      {/* ── Cabeçalho ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Ocorrências</h1>
+          {data && (
+            <p className="text-sm text-gray-500 mt-0.5">{data.total} registro{data.total !== 1 ? 's' : ''}</p>
+          )}
+        </div>
         <Link
           href="/ocorrencias/nova"
-          className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm transition-colors self-start sm:self-auto"
         >
-          + Nova ocorrência
+          <Plus size={16} />
+          Nova ocorrência
         </Link>
       </div>
 
-      <div className="flex gap-3">
+      {/* ── Filtros ── */}
+      <div className="flex flex-wrap gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center gap-2 text-gray-400">
+          <Filter size={15} />
+          <span className="text-xs font-medium">Filtros</span>
+        </div>
         <select
           value={filterStatus}
           onChange={e => { setStatus(e.target.value); setPage(1); }}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">Todos os status</option>
           {(Object.keys(STATUS_LABELS) as StatusOcorrencia[]).map(s => (
@@ -56,61 +79,97 @@ export default function OcorrenciasPage() {
         <select
           value={filterSev}
           onChange={e => { setSev(e.target.value); setPage(1); }}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">Todas as severidades</option>
           {[1, 2, 3, 4, 5].map(s => (
             <option key={s} value={s}>Severidade {s}</option>
           ))}
         </select>
+        {(filterStatus || filterSev) && (
+          <button
+            onClick={() => { setStatus(''); setSev(''); setPage(1); }}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
-      {isLoading && <p className="text-sm text-gray-400">Carregando...</p>}
-      {isError   && <p className="text-sm text-red-500">Erro ao carregar ocorrências.</p>}
+      {/* ── Estados de loading/error ── */}
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 h-20 animate-pulse">
+              <div className="flex gap-4">
+                <div className="w-28 h-4 bg-gray-100 rounded" />
+                <div className="w-20 h-4 bg-gray-100 rounded" />
+                <div className="w-16 h-6 bg-gray-100 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <div className="rounded-2xl bg-red-50 border border-red-100 p-5 text-sm text-red-700">
+          Erro ao carregar ocorrências. Tente novamente.
+        </div>
+      )}
 
       {data && (
         <>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Código</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Data</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Severidade</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">SLA</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500"></th>
+          {/* ── Tabela desktop ── */}
+          <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-100 text-sm">
+              <thead>
+                <tr className="bg-gray-50/80">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Severidade</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">SLA</th>
+                  <th className="px-5 py-3.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-50">
                 {data.data.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                      Nenhuma ocorrência encontrada.
+                    <td colSpan={6} className="px-5 py-16 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <FileX size={32} className="text-gray-200" />
+                        <p className="text-gray-400 text-sm">Nenhuma ocorrência encontrada.</p>
+                      </div>
                     </td>
                   </tr>
                 )}
                 {data.data.map(oc => (
-                  <tr key={oc.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{oc.codigo}</td>
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={oc.id} className="hover:bg-blue-50/30 transition-colors group">
+                    <td className="px-5 py-4">
+                      <span className="font-mono text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        {oc.codigo}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-gray-600 text-sm">
                       {format(parseISO(oc.dataIncidente), 'dd/MM/yyyy', { locale: ptBR })}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <SeveridadeBadge severidade={oc.severidade} />
                     </td>
-                    <td className="px-4 py-3 text-gray-700">
-                      {STATUS_LABELS[oc.status]}
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ring-1 ring-inset ${STATUS_CORES[oc.status]}`}>
+                        {STATUS_LABELS[oc.status]}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <SlaIndicator slaPrazo={oc.slaPrazo} status={oc.status} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 text-right">
                       <Link
                         href={`/ocorrencias/${oc.id}`}
-                        className="text-blue-600 hover:underline text-xs font-medium"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        Ver detalhes
+                        Ver <ArrowRight size={13} />
                       </Link>
                     </td>
                   </tr>
@@ -119,25 +178,61 @@ export default function OcorrenciasPage() {
             </table>
           </div>
 
+          {/* ── Cards mobile ── */}
+          <div className="md:hidden space-y-3">
+            {data.data.length === 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+                <FileX size={32} className="text-gray-200 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm">Nenhuma ocorrência encontrada.</p>
+              </div>
+            )}
+            {data.data.map(oc => (
+              <Link key={oc.id} href={`/ocorrencias/${oc.id}`}>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3 active:bg-gray-50">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      {oc.codigo}
+                    </span>
+                    <SeveridadeBadge severidade={oc.severidade} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ring-1 ring-inset ${STATUS_CORES[oc.status]}`}>
+                      {STATUS_LABELS[oc.status]}
+                    </span>
+                    <SlaIndicator slaPrazo={oc.slaPrazo} status={oc.status} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>{format(parseISO(oc.dataIncidente), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                    <ArrowRight size={14} className="text-gray-300" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* ── Paginação ── */}
           {data.totalPages > 1 && (
-            <div className="flex items-center gap-2 text-sm">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40"
-              >
-                Anterior
-              </button>
-              <span className="text-gray-500">
-                Página {data.page} de {data.totalPages}
-              </span>
-              <button
-                disabled={page === data.totalPages}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40"
-              >
-                Próxima
-              </button>
+            <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3">
+              <p className="text-sm text-gray-500">
+                Página <span className="font-medium text-gray-700">{data.page}</span> de{' '}
+                <span className="font-medium text-gray-700">{data.totalPages}</span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={15} /> Anterior
+                </button>
+                <button
+                  disabled={page === data.totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próxima <ChevronRight size={15} />
+                </button>
+              </div>
             </div>
           )}
         </>

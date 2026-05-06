@@ -3,10 +3,28 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery }  from '@tanstack/react-query';
-import { alunosApi }       from '@/lib/api/alunos.api';
-import { categoriasApi }   from '@/lib/api/categorias.api';
+import { Search, UserCheck, X, ArrowLeft, AlertCircle } from 'lucide-react';
+import { alunosApi }          from '@/lib/api/alunos.api';
+import { categoriasApi }      from '@/lib/api/categorias.api';
 import { useCriarOcorrencia } from '@/lib/hooks/useOcorrencias';
 import type { Aluno } from '@/types/ocorrencia.types';
+
+const SEV_CONFIG = [
+  { n: 1 as const, label: 'Informativa', cor: 'bg-gray-100 text-gray-600 border-gray-200',         sel: 'bg-gray-600 text-white border-gray-600' },
+  { n: 2 as const, label: 'Leve',        cor: 'bg-blue-50 text-blue-600 border-blue-200',           sel: 'bg-blue-600 text-white border-blue-600' },
+  { n: 3 as const, label: 'Moderada',    cor: 'bg-yellow-50 text-yellow-700 border-yellow-200',     sel: 'bg-yellow-500 text-white border-yellow-500' },
+  { n: 4 as const, label: 'Grave',       cor: 'bg-orange-50 text-orange-700 border-orange-200',     sel: 'bg-orange-500 text-white border-orange-500' },
+  { n: 5 as const, label: 'Gravíssima',  cor: 'bg-red-50 text-red-700 border-red-200',              sel: 'bg-red-600 text-white border-red-600' },
+];
+
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{title}</h2>
+      {children}
+    </div>
+  );
+}
 
 export default function NovaOcorrenciaPage() {
   const router = useRouter();
@@ -34,189 +52,236 @@ export default function NovaOcorrenciaPage() {
   });
 
   const categoriaSelecionada = categorias?.find(c => c.id === categoriaId);
+  const sevAtual = SEV_CONFIG.find(s => s.n === severidade)!;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!aluno) { setError('Selecione um aluno.'); return; }
     setError('');
-
     criar.mutate(
       { alunoId: aluno.id, categoriaId, subcategoria: subcategoria || undefined, severidade, dataIncidente, local, descricao },
       {
         onSuccess: (oc) => router.push(`/ocorrencias/${oc.id}`),
-        onError:   (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Erro ao registrar ocorrência.';
-          setError(msg);
-        },
+        onError:   (err: unknown) => setError(err instanceof Error ? err.message : 'Erro ao registrar ocorrência.'),
       },
     );
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Registrar Ocorrência</h1>
+    <div className="max-w-2xl mx-auto space-y-6">
 
-      <form onSubmit={handleSubmit} className="space-y-5 bg-white rounded-xl border border-gray-200 p-6">
+      {/* ── Header ── */}
+      <div>
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-4"
+        >
+          <ArrowLeft size={16} />
+          Voltar
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900">Registrar Ocorrência</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Preencha todos os campos obrigatórios.</p>
+      </div>
 
-        {/* Aluno */}
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-gray-700">Aluno</legend>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar por nome ou matrícula (mín. 3 caracteres)"
-              value={aluno ? `${aluno.nome} (${aluno.matricula})` : busca}
-              onChange={e => { setBusca(e.target.value); setAluno(null); }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            {!aluno && busca.length >= 3 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white shadow-md">
-                {buscando && <p className="px-3 py-2 text-xs text-gray-400">Buscando...</p>}
-                {resultadosBusca?.map(a => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => { setAluno(a); setBusca(''); }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-b last:border-0"
-                  >
-                    <span className="font-medium">{a.nome}</span>{' '}
-                    <span className="text-gray-400 text-xs">{a.matricula} · {a.turma} · {a.segmento}</span>
-                  </button>
-                ))}
-                {resultadosBusca?.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-gray-400">Nenhum aluno encontrado.</p>
-                )}
+      <form onSubmit={handleSubmit} className="space-y-8">
+
+        {/* ── Aluno ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <FormSection title="Identificação do Aluno">
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome ou matrícula (mín. 3 caracteres)"
+                value={aluno ? `${aluno.nome} — ${aluno.matricula}` : busca}
+                onChange={e => { setBusca(e.target.value); setAluno(null); }}
+                disabled={!!aluno}
+                className="w-full rounded-xl border border-gray-200 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              />
+              {buscando && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              )}
+
+              {/* Dropdown de resultados */}
+              {!aluno && busca.length >= 3 && !buscando && (
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
+                  {resultadosBusca?.length === 0 && (
+                    <p className="px-4 py-3 text-xs text-gray-400 text-center">Nenhum aluno encontrado.</p>
+                  )}
+                  {resultadosBusca?.map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => { setAluno(a); setBusca(''); }}
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0 transition-colors"
+                    >
+                      <span className="font-semibold text-gray-800">{a.nome}</span>
+                      <span className="text-gray-400 text-xs ml-2">{a.matricula} · {a.turma} · {a.segmento}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Aluno selecionado */}
+            {aluno && (
+              <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                    <UserCheck size={15} className="text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">{aluno.nome}</p>
+                    <p className="text-xs text-green-600">{aluno.matricula} · {aluno.turma} · {aluno.segmento}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAluno(null)}
+                  className="text-green-400 hover:text-red-500 transition-colors p-1"
+                >
+                  <X size={15} />
+                </button>
               </div>
             )}
-          </div>
-          {aluno && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">
-              <span>{aluno.nome} — {aluno.turma} — {aluno.segmento}</span>
-              <button type="button" onClick={() => setAluno(null)} className="ml-auto text-gray-400 hover:text-red-500 text-xs">
-                remover
-              </button>
-            </div>
-          )}
-        </fieldset>
-
-        {/* Categoria */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-          <select
-            required
-            value={categoriaId}
-            onChange={e => { setCategoriaId(e.target.value); setSub(''); }}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Selecione uma categoria</option>
-            {categorias?.map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
+          </FormSection>
         </div>
 
-        {/* Subcategoria */}
-        {categoriaSelecionada && categoriaSelecionada.subcategorias.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subcategoria</label>
-            <select
-              value={subcategoria}
-              onChange={e => setSub(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Nenhuma</option>
-              {categoriaSelecionada.subcategorias.map(s => (
-                <option key={s} value={s}>{s}</option>
+        {/* ── Categoria e Severidade ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+          <FormSection title="Classificação">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Categoria</label>
+              <select
+                required
+                value={categoriaId}
+                onChange={e => { setCategoriaId(e.target.value); setSub(''); }}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Selecione uma categoria</option>
+                {categorias?.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            {categoriaSelecionada && categoriaSelecionada.subcategorias.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Subcategoria</label>
+                <select
+                  value={subcategoria}
+                  onChange={e => setSub(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Nenhuma</option>
+                  {categoriaSelecionada.subcategorias.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </FormSection>
+
+          <FormSection title="Severidade">
+            <div className="grid grid-cols-5 gap-2">
+              {SEV_CONFIG.map(s => (
+                <button
+                  key={s.n}
+                  type="button"
+                  onClick={() => setSev(s.n)}
+                  className={`rounded-xl py-3 text-center border transition-all ${
+                    severidade === s.n ? s.sel : s.cor + ' hover:opacity-80'
+                  }`}
+                >
+                  <span className="block text-xl font-bold">{s.n}</span>
+                  <span className="block text-xs mt-0.5 font-medium">{s.label}</span>
+                </button>
               ))}
-            </select>
+            </div>
+            {severidade >= 4 && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
+                <AlertCircle size={15} />
+                Severidade {severidade} requer validação da coordenação antes de efeito formal.
+              </div>
+            )}
+          </FormSection>
+        </div>
+
+        {/* ── Detalhes ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+          <FormSection title="Detalhes do Incidente">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Data do incidente</label>
+                <input
+                  type="date"
+                  required
+                  value={dataIncidente}
+                  onChange={e => setData(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Local</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={200}
+                  placeholder="Ex: Sala 204 — Bloco B"
+                  value={local}
+                  onChange={e => setLocal(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Descrição do ocorrido</label>
+              <textarea
+                required
+                minLength={20}
+                rows={5}
+                placeholder="Descreva os fatos com detalhes: o que aconteceu, quem estava envolvido, contexto..."
+                value={descricao}
+                onChange={e => setDescricao(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+              <p className="mt-1.5 text-xs text-gray-400 text-right">
+                {descricao.length < 20
+                  ? <span className="text-amber-500">{descricao.length}/20 mínimos</span>
+                  : <span className="text-green-600">{descricao.length} caracteres</span>
+                }
+              </p>
+            </div>
+          </FormSection>
+        </div>
+
+        {/* ── Erro e submit ── */}
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <AlertCircle size={15} />
+            {error}
           </div>
         )}
 
-        {/* Severidade */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Severidade</label>
-          <div className="flex gap-2">
-            {([1, 2, 3, 4, 5] as const).map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSev(s)}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium border transition-colors ${
-                  severidade === s
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-gray-400">
-            {['Informativa', 'Leve', 'Moderada', 'Grave', 'Gravíssima'][severidade - 1]}
-            {severidade >= 4 && ' — requer validação da coordenação'}
-          </p>
-        </div>
-
-        {/* Data */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data do incidente</label>
-          <input
-            type="date"
-            required
-            value={dataIncidente}
-            onChange={e => setData(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Local */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Local</label>
-          <input
-            type="text"
-            required
-            maxLength={200}
-            placeholder="Ex: Sala 204 — Bloco B"
-            value={local}
-            onChange={e => setLocal(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Descrição */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-          <textarea
-            required
-            minLength={20}
-            rows={4}
-            placeholder="Descreva o ocorrido com detalhes (mínimo 20 caracteres)"
-            value={descricao}
-            onChange={e => setDescricao(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-          />
-          <p className="mt-0.5 text-xs text-gray-400">{descricao.length}/2000 caracteres</p>
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="submit"
             disabled={criar.isPending}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
           >
             {criar.isPending ? 'Registrando...' : 'Registrar ocorrência'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="sm:w-auto rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancelar
           </button>
         </div>
+
       </form>
     </div>
   );
