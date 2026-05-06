@@ -26,17 +26,37 @@ export class DashboardService {
       qb.where('aluno.campus = :campus', { campus: usuario.campus });
     }
 
-    const [abertas, aguardandoValidacao, emAcompanhamento, vencidas] = await Promise.all([
-      qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.ABERTA }).getCount(),
-      qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.AGUARDANDO_VALIDACAO }).getCount(),
-      qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.EM_ACOMPANHAMENTO }).getCount(),
-      qb.clone()
-        .andWhere('oc.slaPrazo < :agora', { agora: new Date() })
-        .andWhere('oc.status NOT IN (:...finais)', { finais: [StatusOcorrencia.RESOLVIDA, StatusOcorrencia.ARQUIVADA] })
-        .getCount(),
-    ]);
+    const hoje     = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const fimDia    = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
 
-    return { abertas, aguardandoValidacao, emAcompanhamento, slaVencidas: vencidas };
+    const [total, abertas, aguardandoValidacao, emAcompanhamento, resolvidasHoje, vencidas, porSevRaw] =
+      await Promise.all([
+        qb.clone().getCount(),
+        qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.ABERTA }).getCount(),
+        qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.AGUARDANDO_VALIDACAO }).getCount(),
+        qb.clone().andWhere('oc.status = :s', { s: StatusOcorrencia.EM_ACOMPANHAMENTO }).getCount(),
+        qb.clone()
+          .andWhere('oc.status = :s', { s: StatusOcorrencia.RESOLVIDA })
+          .andWhere('oc.dataResolucao BETWEEN :ini AND :fim', { ini: inicioDia, fim: fimDia })
+          .getCount(),
+        qb.clone()
+          .andWhere('oc.slaPrazo < :agora', { agora: hoje })
+          .andWhere('oc.status NOT IN (:...finais)', { finais: [StatusOcorrencia.RESOLVIDA, StatusOcorrencia.ARQUIVADA] })
+          .getCount(),
+        qb.clone()
+          .select('oc.severidade', 'severidade')
+          .addSelect('COUNT(*)', 'cnt')
+          .groupBy('oc.severidade')
+          .getRawMany<{ severidade: number; cnt: string }>(),
+      ]);
+
+    const porSeveridade: Record<number, number> = {};
+    for (const row of porSevRaw) {
+      porSeveridade[Number(row.severidade)] = Number(row.cnt);
+    }
+
+    return { total, abertas, aguardandoValidacao, emAcompanhamento, resolvidasHoje, slaVencidas: vencidas, porSeveridade };
   }
 
   async porSeveridade(usuario: AuthenticatedUser) {
