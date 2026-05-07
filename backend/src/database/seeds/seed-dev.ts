@@ -209,7 +209,7 @@ async function seed() {
 
       // ── Ana Paula (MÉDIO) ─────────────────────────────────────────────
       {
-        codigo: `OC-${ano}-00005-ME`,
+        codigo: `OC-${ano}-00001-ME`,
         alunoId: anaId, regId: profId, catId: acadId,
         subcategoria: 'Plágio/Desonestidade', sev: 3,
         dataInc: daysAgo(10).slice(0, 10), local: 'Laboratório de Informática',
@@ -217,7 +217,7 @@ async function seed() {
         status: 'EM_ACOMPANHAMENTO', dataResolucao: null, criadoEm: daysAgo(10),
       },
       {
-        codigo: `OC-${ano}-00006-ME`,
+        codigo: `OC-${ano}-00002-ME`,
         alunoId: anaId, regId: profId, catId: comportId,
         subcategoria: 'Vocabulário inadequado', sev: 2,
         dataInc: daysAgo(25).slice(0, 10), local: 'Sala 301 — Bloco C',
@@ -225,7 +225,7 @@ async function seed() {
         status: 'RESOLVIDA', dataResolucao: daysAgo(23), criadoEm: daysAgo(25),
       },
       {
-        codigo: `OC-${ano}-00007-ME`,
+        codigo: `OC-${ano}-00003-ME`,
         alunoId: anaId, regId: coordId, catId: saudeId,
         subcategoria: 'Automutilação / risco', sev: 5,
         dataInc: daysAgo(1).slice(0, 10), local: 'Banheiro feminino — Bloco A',
@@ -233,7 +233,7 @@ async function seed() {
         status: 'AGUARDANDO_VALIDACAO', dataResolucao: null, criadoEm: daysAgo(1),
       },
       {
-        codigo: `OC-${ano}-00008-ME`,
+        codigo: `OC-${ano}-00004-ME`,
         alunoId: anaId, regId: profId, catId: discId,
         subcategoria: 'Desrespeito a professor', sev: 2,
         dataInc: daysAgo(8).slice(0, 10), local: 'Sala 301 — Bloco C',
@@ -243,7 +243,7 @@ async function seed() {
 
       // ── Carlos Eduardo (SUPERIOR) ─────────────────────────────────────
       {
-        codigo: `OC-${ano}-00009-SU`,
+        codigo: `OC-${ano}-00001-SU`,
         alunoId: carlosId, regId: profId, catId: acadId,
         subcategoria: 'Plágio/Desonestidade', sev: 3,
         dataInc: daysAgo(15).slice(0, 10), local: 'Laboratório de Programação',
@@ -251,7 +251,7 @@ async function seed() {
         status: 'EM_ACOMPANHAMENTO', dataResolucao: null, criadoEm: daysAgo(15),
       },
       {
-        codigo: `OC-${ano}-00010-SU`,
+        codigo: `OC-${ano}-00002-SU`,
         alunoId: carlosId, regId: profId, catId: discId,
         subcategoria: 'Desrespeito a professor', sev: 2,
         dataInc: daysAgo(3).slice(0, 10), local: 'Sala 501 — Bloco D',
@@ -259,7 +259,7 @@ async function seed() {
         status: 'ABERTA', dataResolucao: null, criadoEm: daysAgo(3),
       },
       {
-        codigo: `OC-${ano}-00011-SU`,
+        codigo: `OC-${ano}-00003-SU`,
         alunoId: carlosId, regId: coordId, catId: acadId,
         subcategoria: 'Reprovação por falta', sev: 2,
         dataInc: daysAgo(30).slice(0, 10), local: 'Coordenação do Curso',
@@ -267,7 +267,7 @@ async function seed() {
         status: 'RESOLVIDA', dataResolucao: daysAgo(27), criadoEm: daysAgo(30),
       },
       {
-        codigo: `OC-${ano}-00012-SU`,
+        codigo: `OC-${ano}-00004-SU`,
         alunoId: carlosId, regId: profId, catId: comportId,
         subcategoria: 'Comportamento perturbador', sev: 1,
         dataInc: daysAgo(12).slice(0, 10), local: 'Biblioteca — Campus A',
@@ -329,7 +329,7 @@ async function seed() {
       );
     }
 
-    // ── Atualizar sequência de códigos ────────────────────────────────────
+    // ── Atualizar sequência de códigos (por segmento, 4 ocorrências cada) ──
     await q.query(
       `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, 'FM', 4)
        ON DUPLICATE KEY UPDATE ultimo_seq = GREATEST(ultimo_seq, 4)`, [ano]);
