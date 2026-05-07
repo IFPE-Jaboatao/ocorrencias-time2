@@ -1,4 +1,6 @@
 import { INestApplication, ValidationPipe, Injectable, CanActivate } from '@nestjs/common';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser') as () => ReturnType<typeof import('cookie-parser')>;
 import { Test, TestingModule }             from '@nestjs/testing';
 import { TypeOrmModule }                   from '@nestjs/typeorm';
 import { ConfigModule }                    from '@nestjs/config';
@@ -70,6 +72,7 @@ export async function createTestApp(): Promise<INestApplication> {
   }).compile();
 
   const app = moduleFixture.createNestApplication();
+  app.use(cookieParser());
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());

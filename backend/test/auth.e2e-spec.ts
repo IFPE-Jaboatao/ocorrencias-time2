@@ -5,6 +5,29 @@ import { createTestApp, gerarToken } from './helpers/create-test-app';
 import { seedTestData, SeedResult } from './helpers/seed';
 import { PerfilUsuario }       from '../src/common/enums/perfil-usuario.enum';
 
+/** Extrai o valor de um cookie pelo nome do array Set-Cookie */
+function extractCookie(setCookieHeader: unknown, name: string): string | null {
+  if (!setCookieHeader) return null;
+  const cookies = Array.isArray(setCookieHeader) ? (setCookieHeader as string[]) : [String(setCookieHeader)];
+  for (const cookie of cookies) {
+    const match = cookie.match(new RegExp(`^${name}=([^;]+)`));
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/** Monta header Cookie a partir de pares [nome, valor] */
+function buildCookieHeader(...pairs: [string, string][]): string {
+  return pairs.map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
+/** Lê o Set-Cookie como array de forma segura */
+function getSetCookies(headers: Record<string, unknown>): string[] {
+  const raw = headers['set-cookie'];
+  if (!raw) return [];
+  return Array.isArray(raw) ? (raw as string[]) : [String(raw)];
+}
+
 describe('Auth — E2E', () => {
   let app:    INestApplication;
   let ds:     DataSource;
@@ -51,8 +74,7 @@ describe('Auth — E2E', () => {
   // ─── magic-link verificar ────────────────────────────────────────────────────
 
   describe('POST /api/v1/auth/magic-link/verificar', () => {
-    it('emite accessToken + refreshToken com token válido', async () => {
-      // Solicitar token
+    it('seta cookies sgoa_token e sgoa_refresh e retorna { ok: true }', async () => {
       const solRes = await request(app.getHttpServer())
         .post('/api/v1/auth/magic-link')
         .send({ email: seeds.coordenador.email })
@@ -65,8 +87,10 @@ describe('Auth — E2E', () => {
         .send({ token: rawToken })
         .expect(200);
 
-      expect(verRes.body).toHaveProperty('accessToken');
-      expect(verRes.body).toHaveProperty('refreshToken');
+      expect(verRes.body).toEqual({ ok: true });
+      const setCookies = getSetCookies(verRes.headers as Record<string, unknown>);
+      expect(setCookies.some(c => c.startsWith('sgoa_token='))).toBe(true);
+      expect(setCookies.some(c => c.startsWith('sgoa_refresh='))).toBe(true);
     });
 
     it('400 quando token já foi utilizado (single-use — H-07)', async () => {
@@ -101,7 +125,7 @@ describe('Auth — E2E', () => {
   // ─── refresh ─────────────────────────────────────────────────────────────────
 
   describe('POST /api/v1/auth/refresh', () => {
-    it('emite novo par de tokens com refresh válido', async () => {
+    it('seta novo cookie sgoa_token com refresh válido (e rotaciona token)', async () => {
       const solRes = await request(app.getHttpServer())
         .post('/api/v1/auth/magic-link')
         .send({ email: seeds.admin.email })
@@ -112,17 +136,23 @@ describe('Auth — E2E', () => {
         .send({ token: solRes.body.token })
         .expect(200);
 
+      const setCookies = getSetCookies(verRes.headers as Record<string, unknown>);
+      const refreshToken = extractCookie(setCookies, 'sgoa_refresh');
+      expect(refreshToken).toBeTruthy();
+
       const refreshRes = await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: verRes.body.refreshToken })
+        .set('Cookie', buildCookieHeader(['sgoa_refresh', refreshToken!]))
         .expect(200);
 
-      expect(refreshRes.body).toHaveProperty('accessToken');
-      expect(refreshRes.body).toHaveProperty('refreshToken');
+      expect(refreshRes.body).toEqual({ ok: true });
+      const newCookies = getSetCookies(refreshRes.headers as Record<string, unknown>);
+      expect(newCookies.some(c => c.startsWith('sgoa_token='))).toBe(true);
+
       // O refreshToken antigo não pode ser reutilizado (rotação)
       await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: verRes.body.refreshToken })
+        .set('Cookie', buildCookieHeader(['sgoa_refresh', refreshToken!]))
         .expect(401);
     });
   });
@@ -130,14 +160,15 @@ describe('Auth — E2E', () => {
   // ─── dev-login ───────────────────────────────────────────────────────────────
 
   describe('POST /api/v1/auth/dev-login', () => {
-    it('retorna tokens com e-mail válido (DEV_LOGIN_ENABLED=true)', async () => {
+    it('seta cookie sgoa_token e retorna { ok: true } (DEV_LOGIN_ENABLED=true)', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/dev-login')
         .send({ email: seeds.professor.email })
         .expect(200);
 
-      expect(res.body).toHaveProperty('accessToken');
-      expect(res.body).toHaveProperty('refreshToken');
+      expect(res.body).toEqual({ ok: true });
+      const setCookies = getSetCookies(res.headers as Record<string, unknown>);
+      expect(setCookies.some(c => c.startsWith('sgoa_token='))).toBe(true);
     });
 
     it('404 para e-mail inexistente', async () => {
@@ -175,7 +206,7 @@ describe('Auth — E2E', () => {
   // ─── logout ──────────────────────────────────────────────────────────────────
 
   describe('POST /api/v1/auth/logout', () => {
-    it('revoga refresh token e retorna 204', async () => {
+    it('revoga refresh token (via cookie) e retorna 204', async () => {
       const solRes = await request(app.getHttpServer())
         .post('/api/v1/auth/magic-link')
         .send({ email: seeds.coordenadorB.email })
@@ -186,6 +217,10 @@ describe('Auth — E2E', () => {
         .send({ token: solRes.body.token })
         .expect(200);
 
+      const setCookies = getSetCookies(verRes.headers as Record<string, unknown>);
+      const refreshToken = extractCookie(setCookies, 'sgoa_refresh');
+      expect(refreshToken).toBeTruthy();
+
       const token = gerarToken(app, {
         sub: seeds.coordenadorB.id,
         email: seeds.coordenadorB.email,
@@ -195,13 +230,13 @@ describe('Auth — E2E', () => {
       await request(app.getHttpServer())
         .post('/api/v1/auth/logout')
         .set('Authorization', `Bearer ${token}`)
-        .send({ refreshToken: verRes.body.refreshToken })
+        .set('Cookie', buildCookieHeader(['sgoa_refresh', refreshToken!]))
         .expect(204);
 
       // Após logout, refresh token não pode ser reutilizado
       await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .send({ refreshToken: verRes.body.refreshToken })
+        .set('Cookie', buildCookieHeader(['sgoa_refresh', refreshToken!]))
         .expect(401);
     });
   });
