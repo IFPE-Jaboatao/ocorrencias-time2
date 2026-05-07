@@ -38,6 +38,7 @@ describe('NotificacoesService', () => {
   let service: NotificacoesService;
   let notifRepo: { save: jest.Mock; create: jest.Mock; update: jest.Mock; find: jest.Mock };
   let responsaveisService: { listarAtivosParaNotificacao: jest.Mock };
+  let alunosService: { buscarPorId: jest.Mock };
   let sendMailMock: jest.Mock;
 
   beforeEach(async () => {
@@ -53,13 +54,16 @@ describe('NotificacoesService', () => {
     responsaveisService = {
       listarAtivosParaNotificacao: jest.fn().mockResolvedValue([makeResponsavel()]),
     };
+    alunosService = {
+      buscarPorId: jest.fn().mockResolvedValue(makeAluno()),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificacoesService,
         { provide: getRepositoryToken(Notificacao), useValue: notifRepo },
         { provide: ResponsaveisService, useValue: responsaveisService },
-        { provide: AlunosService, useValue: {} },
+        { provide: AlunosService, useValue: alunosService },
         {
           provide: ConfigService,
           useValue: {
@@ -204,6 +208,19 @@ describe('NotificacoesService', () => {
   });
 
   // ── marcarLida / listarParaUsuario ────────────────────────────────────────
+
+  describe('aoOcorrenciaValidada()', () => {
+    it('H-05: deve buscar aluno e notificar responsavel quando evento nao carrega aluno', async () => {
+      const oc = makeOcorrencia({ severidade: 4 });
+
+      await service.aoOcorrenciaValidada({ ocorrencia: oc as any, aluno: undefined });
+      await new Promise(r => setImmediate(r));
+
+      expect(alunosService.buscarPorId).toHaveBeenCalledWith('aluno-1');
+      expect(responsaveisService.listarAtivosParaNotificacao).toHaveBeenCalledWith('aluno-1');
+      expect(sendMailMock).toHaveBeenCalledTimes(1);
+    });
+  });
 
   describe('marcarLida()', () => {
     it('deve chamar update com status LIDO e dataLeitura', async () => {

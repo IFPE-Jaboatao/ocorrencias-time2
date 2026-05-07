@@ -19,6 +19,8 @@ describe('UsuariosController', () => {
             listar:       jest.fn(),
             buscarPorId:  jest.fn(),
             alterarPerfil: jest.fn(),
+            listarTurmas: jest.fn(),
+            atualizarTurmas: jest.fn(),
             desativar:    jest.fn(),
           },
         },
@@ -93,6 +95,31 @@ describe('UsuariosController', () => {
 
       expect(svc.alterarPerfil).toHaveBeenCalledTimes(1);
       expect(svc.alterarPerfil).toHaveBeenCalledWith(id, perfil);
+      expect(retorno).toBe(resultado);
+    });
+  });
+
+  describe('listarTurmas()', () => {
+    it('deve delegar ao service.listarTurmas() com id', async () => {
+      const resultado = [{ usuarioId: 'usr-uuid-1', turmaId: 'turma-1' }] as any[];
+      svc.listarTurmas.mockResolvedValue(resultado);
+
+      const retorno = await ctrl.listarTurmas('usr-uuid-1');
+
+      expect(svc.listarTurmas).toHaveBeenCalledWith('usr-uuid-1');
+      expect(retorno).toBe(resultado);
+    });
+  });
+
+  describe('atualizarTurmas()', () => {
+    it('deve delegar ao service.atualizarTurmas() com id e dto', async () => {
+      const dto = { turmaIds: ['11111111-1111-4111-8111-111111111111'] };
+      const resultado = [{ usuarioId: 'usr-uuid-1', turmaId: dto.turmaIds[0] }] as any[];
+      svc.atualizarTurmas.mockResolvedValue(resultado);
+
+      const retorno = await ctrl.atualizarTurmas('usr-uuid-1', dto);
+
+      expect(svc.atualizarTurmas).toHaveBeenCalledWith('usr-uuid-1', dto);
       expect(retorno).toBe(resultado);
     });
   });

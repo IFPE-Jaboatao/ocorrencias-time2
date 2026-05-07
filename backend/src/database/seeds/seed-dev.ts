@@ -101,6 +101,27 @@ async function seed() {
     }
 
     // ── Alunos de teste ────────────────────────────────────────────────────
+    const turmaData = [
+      { key: '8A', nome: '8A', segmento: 'FUNDAMENTAL', campus: 'Campus A', curso: 'Ensino Fundamental', anoLetivo: 2026 },
+      { key: '3B', nome: '3B', segmento: 'MEDIO', campus: 'Campus A', curso: 'Ensino Medio', anoLetivo: 2026 },
+      { key: '2024.1', nome: '2024.1', segmento: 'SUPERIOR', campus: 'Campus A', curso: 'ADS', anoLetivo: 2026 },
+    ];
+
+    const turmaIds: Record<string, string> = {};
+    for (const t of turmaData) {
+      const id = crypto.randomUUID();
+      await q.query(
+        `INSERT IGNORE INTO turmas (id, nome, segmento, campus, curso, ano_letivo, ativo)
+         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+        [id, t.nome, t.segmento, t.campus, t.curso, t.anoLetivo],
+      );
+      const [turmaRow] = await q.query(
+        `SELECT id FROM turmas WHERE campus = ? AND segmento = ? AND curso = ? AND nome = ? AND ano_letivo = ? LIMIT 1`,
+        [t.campus, t.segmento, t.curso, t.nome, t.anoLetivo],
+      );
+      turmaIds[t.key] = turmaRow?.id ?? id;
+    }
+
     const alunoData = [
       { matricula: '2026FM0001', nome: 'Lucas Oliveira',         data_nascimento: '2013-05-10', segmento: 'FUNDAMENTAL', campus: 'Campus A', curso: 'Ensino Fundamental',  turma: '8A',     cpf_enc: encryptFake('111.111.111-11') },
       { matricula: '2026ME0001', nome: 'Ana Paula Souza',        data_nascimento: '2007-11-22', segmento: 'MEDIO',       campus: 'Campus A', curso: 'Ensino Médio',         turma: '3B',     cpf_enc: encryptFake('222.222.222-22') },
@@ -112,9 +133,9 @@ async function seed() {
       const id = crypto.randomUUID();
       alunoIds[a.matricula] = id;
       await q.query(
-        `INSERT IGNORE INTO alunos (id, matricula, nome, data_nascimento, cpf_encriptado, segmento, campus, curso, turma, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO')`,
-        [id, a.matricula, a.nome, a.data_nascimento, a.cpf_enc, a.segmento, a.campus, a.curso, a.turma],
+        `INSERT IGNORE INTO alunos (id, matricula, nome, data_nascimento, cpf_encriptado, segmento, campus, curso, turma, turma_id, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO')`,
+        [id, a.matricula, a.nome, a.data_nascimento, a.cpf_enc, a.segmento, a.campus, a.curso, a.turma, turmaIds[a.turma]],
       );
     }
 
@@ -127,10 +148,21 @@ async function seed() {
     for (const r of responsaveis) {
       const alunoId = alunoIds[r.alunoMatricula];
       if (!alunoId) continue;
+      const responsavelId = crypto.randomUUID();
       await q.query(
-        `INSERT IGNORE INTO responsaveis_legais (id, aluno_id, nome, cpf_encriptado, parentesco, email, telefone, receber_notificacoes)
-         VALUES (UUID(), ?, ?, '', ?, ?, ?, 1)`,
-        [alunoId, r.nome, r.parentesco, r.email, r.telefone],
+        `INSERT IGNORE INTO responsaveis (id, nome, cpf_encriptado, email, telefone)
+         VALUES (?, ?, '', ?, ?)`,
+        [responsavelId, r.nome, r.email, r.telefone],
+      );
+      const [respRow] = await q.query(
+        `SELECT id FROM responsaveis WHERE email = ? LIMIT 1`,
+        [r.email],
+      );
+      if (!respRow?.id) continue;
+      await q.query(
+        `INSERT IGNORE INTO aluno_responsavel (aluno_id, responsavel_id, parentesco, receber_notificacoes)
+         VALUES (?, ?, ?, 1)`,
+        [alunoId, respRow.id, r.parentesco],
       );
     }
 
@@ -163,6 +195,14 @@ async function seed() {
 
     // ── Ocorrências de demonstração ────────────────────────────────────────
     // Formato código: OC-YYYY-NNNNN-SEG
+    for (const turmaId of Object.values(turmaIds)) {
+      await q.query(
+        `INSERT IGNORE INTO usuario_turmas (usuario_id, turma_id, papel, ativo)
+         VALUES (?, ?, 'PROFESSOR', 1)`,
+        [profId, turmaId],
+      );
+    }
+
     const ano = new Date().getFullYear();
 
     interface OcDef {

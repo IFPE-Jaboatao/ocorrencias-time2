@@ -5,6 +5,7 @@ import { EventEmitter2 }          from '@nestjs/event-emitter';
 import { subDays, addDays }       from 'date-fns';
 import { OcorrenciasService }     from './ocorrencias.service';
 import { Ocorrencia }             from './entities/ocorrencia.entity';
+import { UsuarioTurma }           from '../turmas/entities/usuario-turma.entity';
 import { AlunosService }          from '../alunos/alunos.service';
 import { CategoriasService }      from '../categorias/categorias.service';
 import { SlaService }             from '../sla/sla.service';
@@ -23,7 +24,7 @@ const makeUser = (o: Partial<AuthenticatedUser> = {}): AuthenticatedUser => ({
 
 const makeAluno = (o: any = {}) => ({
   id: 'aluno-1', status: 'ATIVO', campus: 'Campus A',
-  segmento: Segmento.FUNDAMENTAL, dataNascimento: new Date('2010-01-01'),
+  segmento: Segmento.FUNDAMENTAL, turmaId: 'turma-1', dataNascimento: new Date('2010-01-01'),
   ...o,
 });
 
@@ -68,6 +69,7 @@ const makeDataSource = () => ({
 describe('OcorrenciasService', () => {
   let service: OcorrenciasService;
   let repo: ReturnType<typeof makeRepo>;
+  let usuarioTurmaRepo: { exists: jest.Mock };
   let dataSource: ReturnType<typeof makeDataSource>;
   let alunosService: { buscarPorId: jest.Mock };
   let categoriasService: { buscarPorId: jest.Mock };
@@ -76,6 +78,7 @@ describe('OcorrenciasService', () => {
 
   beforeEach(async () => {
     repo             = makeRepo();
+    usuarioTurmaRepo = { exists: jest.fn().mockResolvedValue(true) };
     dataSource       = makeDataSource();
     alunosService    = { buscarPorId: jest.fn().mockResolvedValue(makeAluno()) };
     categoriasService= { buscarPorId: jest.fn().mockResolvedValue(makeCategoria()) };
@@ -99,6 +102,7 @@ describe('OcorrenciasService', () => {
       providers: [
         OcorrenciasService,
         { provide: getRepositoryToken(Ocorrencia), useValue: repo },
+        { provide: getRepositoryToken(UsuarioTurma), useValue: usuarioTurmaRepo },
         { provide: getDataSourceToken(),           useValue: dataSource },
         { provide: AlunosService,                  useValue: alunosService },
         { provide: CategoriasService,              useValue: categoriasService },
@@ -137,7 +141,14 @@ describe('OcorrenciasService', () => {
     });
 
     it('RN-07: professor não pode registrar ocorrência de aluno de outro campus', async () => {
-      alunosService.buscarPorId.mockResolvedValue(makeAluno({ campus: 'Campus B' }));
+      alunosService.buscarPorId.mockResolvedValue(makeAluno({ turmaId: null }));
+      const professor = makeUser({ perfil: PerfilUsuario.PROFESSOR, campus: 'Campus A' });
+      await expect(service.criar(makeCreateDto(), professor))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('RN-07: professor nao pode registrar ocorrencia de aluno de turma nao vinculada', async () => {
+      usuarioTurmaRepo.exists.mockResolvedValue(false);
       const professor = makeUser({ perfil: PerfilUsuario.PROFESSOR, campus: 'Campus A' });
       await expect(service.criar(makeCreateDto(), professor))
         .rejects.toBeInstanceOf(ForbiddenException);
@@ -165,7 +176,16 @@ describe('OcorrenciasService', () => {
         dataIncidente: subDays(new Date(), 91).toISOString().split('T')[0],
         aprovacaoRetroativaDiretor: true,
       });
-      await expect(service.criar(dto, makeUser())).resolves.toBeDefined();
+      await expect(service.criar(dto, makeUser({ perfil: PerfilUsuario.DIRETOR }))).resolves.toBeDefined();
+    });
+
+    it('RN-11: deve negar aprovacao retroativa quando usuario nao e Diretor/Admin', async () => {
+      const dto = makeCreateDto({
+        dataIncidente: subDays(new Date(), 91).toISOString().split('T')[0],
+        aprovacaoRetroativaDiretor: true,
+      });
+      await expect(service.criar(dto, makeUser()))
+        .rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('sev ≥ 4 deve iniciar com status AGUARDANDO_VALIDACAO', async () => {
@@ -257,6 +277,31 @@ describe('OcorrenciasService', () => {
   });
 
   // ─── listar (scoping H-08) ──────────────────────────────────────────────
+
+  describe('alterarSeveridade()', () => {
+    const admin = makeUser({ perfil: PerfilUsuario.ADMIN, sub: 'admin-1' });
+
+    it('deve persistir nova severidade e emitir evento', async () => {
+      const oc = makeOcorrencia({ severidade: 3 });
+      repo.findOneOrFail.mockResolvedValue(oc);
+      repo.save.mockImplementation((x) => Promise.resolve(x));
+
+      const result = await service.alterarSeveridade('oc-1', 4, admin);
+
+      expect(result.severidade).toBe(4);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'ocorrencia.severidade_alterada',
+        expect.objectContaining({ severidadeAnterior: 3 }),
+      );
+    });
+
+    it('RN-12: deve impedir alterar severidade de ocorrencia arquivada', async () => {
+      repo.findOneOrFail.mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.ARQUIVADA }));
+
+      await expect(service.alterarSeveridade('oc-1', 4, admin))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
 
   describe('listar() — scoping por perfil (H-08)', () => {
     let qb: any;

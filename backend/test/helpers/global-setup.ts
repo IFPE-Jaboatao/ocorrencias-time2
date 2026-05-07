@@ -35,7 +35,7 @@ export default async function globalSetup() {
     'refresh_tokens', 'magic_link_tokens', 'ciencias_formais',
     'encaminhamentos', 'validacoes_ocorrencia', 'notificacoes',
     'comentarios', 'ocorrencias', 'codigo_sequencia',
-    'responsaveis_legais', 'alunos', 'categorias_ocorrencia',
+    'aluno_responsavel', 'responsaveis', 'alunos', 'usuario_turmas', 'turmas', 'categorias_ocorrencia',
     'auditorias', 'usuarios',
   ];
   for (const t of tables) {

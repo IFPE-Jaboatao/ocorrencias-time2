@@ -20,6 +20,8 @@ const makeValidador = (o: Partial<AuthenticatedUser> = {}): AuthenticatedUser =>
 const makeOcorrencia = (o: any = {}) => ({
   id: 'oc-1', registradorId: 'outro-user', severidade: 3,
   status: StatusOcorrencia.AGUARDANDO_VALIDACAO,
+  alunoId: 'aluno-1',
+  aluno: { id: 'aluno-1', dataNascimento: new Date('2010-01-01') },
   ...o,
 });
 
@@ -35,7 +37,7 @@ const makeDto = (o: any = {}) => ({
 describe('ValidacoesService', () => {
   let service: ValidacoesService;
   let repo: { save: jest.Mock; create: jest.Mock; find: jest.Mock };
-  let ocorrenciasService: { buscarPorId: jest.Mock; alterarStatus: jest.Mock };
+  let ocorrenciasService: { buscarPorId: jest.Mock; alterarStatus: jest.Mock; alterarSeveridade: jest.Mock };
   let eventEmitter: { emit: jest.Mock };
 
   beforeEach(async () => {
@@ -45,8 +47,9 @@ describe('ValidacoesService', () => {
       find:   jest.fn().mockResolvedValue([]),
     };
     ocorrenciasService = {
-      buscarPorId:   jest.fn().mockResolvedValue(makeOcorrencia()),
-      alterarStatus: jest.fn().mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.EM_ACOMPANHAMENTO })),
+      buscarPorId:       jest.fn().mockResolvedValue(makeOcorrencia()),
+      alterarStatus:     jest.fn().mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.EM_ACOMPANHAMENTO })),
+      alterarSeveridade: jest.fn().mockResolvedValue(makeOcorrencia({ severidade: 4 })),
     };
     eventEmitter = { emit: jest.fn() };
 
@@ -85,10 +88,15 @@ describe('ValidacoesService', () => {
       );
     });
 
-    it('ESCALAR → deve manter status AGUARDANDO_VALIDACAO', async () => {
+    it('ESCALAR deve manter status AGUARDANDO_VALIDACAO sem transicao redundante', async () => {
       await service.validar('oc-1', makeDto({ tipoDecisao: TipoDecisao.ESCALAR }), makeValidador());
-      expect(ocorrenciasService.alterarStatus).toHaveBeenCalledWith(
-        'oc-1', StatusOcorrencia.AGUARDANDO_VALIDACAO, expect.anything(),
+      expect(ocorrenciasService.alterarStatus).not.toHaveBeenCalled();
+    });
+
+    it('deve persistir severidadeNova quando informada', async () => {
+      await service.validar('oc-1', makeDto({ severidadeNova: 4 }), makeValidador());
+      expect(ocorrenciasService.alterarSeveridade).toHaveBeenCalledWith(
+        'oc-1', 4, expect.anything(),
       );
     });
 
@@ -131,7 +139,10 @@ describe('ValidacoesService', () => {
       await service.validar('oc-1', makeDto(), makeValidador());
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'ocorrencia.validada',
-        expect.objectContaining({ validador: expect.any(Object) }),
+        expect.objectContaining({
+          aluno: expect.anything(),
+          validador: expect.any(Object),
+        }),
       );
     });
   });
