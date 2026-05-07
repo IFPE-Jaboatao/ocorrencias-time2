@@ -126,6 +126,7 @@ export default function OcorrenciasPage() {
               <thead>
                 <tr className="bg-gray-50/80">
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Categoria</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Severidade</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
@@ -136,7 +137,7 @@ export default function OcorrenciasPage() {
               <tbody className="divide-y divide-gray-50">
                 {data.data.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-16 text-center">
+                    <td colSpan={7} className="px-5 py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <FileX size={32} className="text-gray-200" />
                         <p className="text-gray-400 text-sm">Nenhuma ocorrência encontrada.</p>
@@ -155,6 +156,14 @@ export default function OcorrenciasPage() {
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 ring-1 ring-inset ring-red-200 px-1.5 py-0.5 rounded-full" title="Alerta de reincidência (RN-03)">
                             <TriangleAlert size={10} /> Reincidência
                           </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 hidden lg:table-cell">
+                      <div>
+                        <span className="text-sm text-gray-800">{oc.categoria?.nome ?? '—'}</span>
+                        {oc.subcategoria && (
+                          <p className="text-xs text-gray-400 mt-0.5">{oc.subcategoria}</p>
                         )}
                       </div>
                     </td>
@@ -198,9 +207,14 @@ export default function OcorrenciasPage() {
               <Link key={oc.id} href={`/ocorrencias/${oc.id}`}>
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3 active:bg-gray-50">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {oc.codigo}
-                    </span>
+                    <div>
+                      <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        {oc.codigo}
+                      </span>
+                      {oc.categoria?.nome && (
+                        <p className="text-xs text-gray-500 mt-1.5">{oc.categoria.nome}{oc.subcategoria ? ` · ${oc.subcategoria}` : ''}</p>
+                      )}
+                    </div>
                     <SeveridadeBadge severidade={oc.severidade} />
                   </div>
                   <div className="flex items-center justify-between">

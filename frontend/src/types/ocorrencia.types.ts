@@ -15,6 +15,7 @@ export interface Ocorrencia {
   alunoId:              string;
   registradorId:        string;
   categoriaId:          string;
+  categoria:            { id: string; nome: string } | null;
   subcategoria:         string | null;
   severidade:           number;
   dataIncidente:        string;

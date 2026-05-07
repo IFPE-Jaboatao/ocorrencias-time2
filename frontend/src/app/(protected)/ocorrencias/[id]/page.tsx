@@ -323,6 +323,19 @@ export default function OcorrenciaDetailPage() {
 
         {/* Detalhes */}
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <InfoField label="Categoria">
+            <div className="flex items-center gap-1.5">
+              <ClipboardList size={14} className="text-gray-400" />
+              <span>{oc.categoria?.nome ?? oc.categoriaId}</span>
+            </div>
+          </InfoField>
+
+          {oc.subcategoria && (
+            <InfoField label="Subcategoria">
+              <span>{oc.subcategoria}</span>
+            </InfoField>
+          )}
+
           <InfoField label="Data do incidente">
             <div className="flex items-center gap-1.5">
               <Calendar size={14} className="text-gray-400" />
