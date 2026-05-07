@@ -27,6 +27,8 @@ export interface Ocorrencia {
   criadoEm:             string;
 }
 
+export type StatusAluno = 'ATIVO' | 'INATIVO' | 'TRANSFERIDO' | 'FORMADO';
+
 export interface Aluno {
   id:              string;
   matricula:       string;
@@ -36,7 +38,8 @@ export interface Aluno {
   campus:          string;
   curso:           string;
   turma:           string;
-  status:          string;
+  status:          StatusAluno;
+  criadoEm?:       string;
 }
 
 export interface PaginatedResponse<T> {

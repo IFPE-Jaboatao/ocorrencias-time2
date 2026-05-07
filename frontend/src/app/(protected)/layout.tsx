@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, Plus,
   LogOut, Menu, X, Building2, ChevronRight,
-  Users, Tag, BarChart3,
+  Users, Tag, BarChart3, GraduationCap,
 } from 'lucide-react';
 import { getCurrentUser, clearTokens, getRefreshToken } from '@/lib/auth/session';
 import { authApi } from '@/lib/api/auth.api';
@@ -16,6 +16,7 @@ const NAV_ITEMS: { href: string; label: string; icon: React.ElementType; perfis?
   { href: '/dashboard',        label: 'Dashboard',       icon: LayoutDashboard },
   { href: '/ocorrencias',      label: 'Ocorrências',     icon: AlertTriangle },
   { href: '/ocorrencias/nova', label: 'Nova Ocorrência', icon: Plus },
+  { href: '/alunos',           label: 'Alunos',          icon: GraduationCap },
   { href: '/relatorios',       label: 'Relatórios',      icon: BarChart3, perfis: ['COORDENADOR', 'EQUIPE_PEDAGOGICA', 'DIRETOR', 'SECRETARIA', 'ADMIN'] },
 ];
 
