@@ -3,8 +3,10 @@ import { NestFactory }                   from '@nestjs/core';
 import { ValidationPipe }                from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet                             from 'helmet';
+import * as cookieParser                  from 'cookie-parser';
 import { AppModule }                     from './app.module';
 import { HttpExceptionFilter }           from './common/filters/http-exception.filter';
+import { CsrfMiddleware }                from './common/middleware/csrf.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +14,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   app.use(helmet());
+  app.use(cookieParser());
 
   app.enableCors({
     origin:      process.env.FRONTEND_URL ?? 'http://localhost:3000',
@@ -49,6 +52,9 @@ async function bootstrap() {
   }
 
   app.setGlobalPrefix('api/v1');
+
+  // CSRF middleware — valida X-CSRF-Token em todas as mutações
+  app.use(new CsrfMiddleware().use.bind(new CsrfMiddleware()));
 
   await app.listen(process.env.PORT ?? 3001);
 }
