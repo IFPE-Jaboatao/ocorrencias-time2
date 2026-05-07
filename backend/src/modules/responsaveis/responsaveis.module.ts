@@ -2,10 +2,11 @@ import { Module }        from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ResponsaveisController } from './responsaveis.controller';
 import { ResponsaveisService }    from './responsaveis.service';
-import { ResponsavelLegal }       from './entities/responsavel-legal.entity';
+import { Responsavel }            from './entities/responsavel.entity';
+import { AlunoResponsavel }       from './entities/aluno-responsavel.entity';
 
 @Module({
-  imports:     [TypeOrmModule.forFeature([ResponsavelLegal])],
+  imports:     [TypeOrmModule.forFeature([Responsavel, AlunoResponsavel])],
   controllers: [ResponsaveisController],
   providers:   [ResponsaveisService],
   exports:     [ResponsaveisService],
