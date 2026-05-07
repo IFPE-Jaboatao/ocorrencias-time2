@@ -326,15 +326,15 @@ export default function OcorrenciaDetailPage() {
           <InfoField label="Categoria">
             <div className="flex items-center gap-1.5">
               <ClipboardList size={14} className="text-gray-400" />
-              <span>{oc.categoria?.nome ?? oc.categoriaId}</span>
+              <span>{oc.categoria?.nome ?? '—'}</span>
             </div>
           </InfoField>
 
-          {oc.subcategoria && (
-            <InfoField label="Subcategoria">
-              <span>{oc.subcategoria}</span>
-            </InfoField>
-          )}
+          <InfoField label="Subcategoria">
+            <span className={oc.subcategoria ? 'text-gray-800' : 'text-gray-400'}>
+              {oc.subcategoria ?? '—'}
+            </span>
+          </InfoField>
 
           <InfoField label="Data do incidente">
             <div className="flex items-center gap-1.5">
