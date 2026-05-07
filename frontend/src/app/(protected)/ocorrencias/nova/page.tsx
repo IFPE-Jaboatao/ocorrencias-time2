@@ -32,6 +32,7 @@ export default function NovaOcorrenciaPage() {
 
   const [busca, setBusca]             = useState('');
   const [aluno, setAluno]             = useState<Aluno | null>(null);
+  const [inputFocado, setInputFocado] = useState(false);
   const [categoriaId, setCategoriaId] = useState('');
   const [subcategoria, setSub]        = useState('');
   const [severidade, setSev]          = useState(1);
@@ -40,10 +41,13 @@ export default function NovaOcorrenciaPage() {
   const [descricao, setDescricao]     = useState('');
   const [error, setError]             = useState('');
 
+  // Busca quando foca (mostra todos) ou quando digita (filtra)
+  const queryAtiva = inputFocado && !aluno;
   const { data: resultadosBusca, isFetching: buscando } = useQuery({
     queryKey: ['alunos-busca', busca],
     queryFn:  () => alunosApi.buscar(busca),
-    enabled:  busca.length >= 3,
+    enabled:  queryAtiva,
+    staleTime: 30_000,
   });
 
   const { data: categorias } = useQuery({
@@ -92,9 +96,11 @@ export default function NovaOcorrenciaPage() {
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por nome ou matrícula (mín. 3 caracteres)"
+                placeholder="Clique para ver alunos ou digite para filtrar..."
                 value={aluno ? `${aluno.nome} — ${aluno.matricula}` : busca}
                 onChange={e => { setBusca(e.target.value); setAluno(null); }}
+                onFocus={() => setInputFocado(true)}
+                onBlur={() => setTimeout(() => setInputFocado(false), 200)}
                 disabled={!!aluno}
                 className="w-full rounded-xl border border-gray-200 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               />
@@ -103,16 +109,20 @@ export default function NovaOcorrenciaPage() {
               )}
 
               {/* Dropdown de resultados */}
-              {!aluno && busca.length >= 3 && !buscando && (
-                <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
+              {!aluno && inputFocado && !buscando && (
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden max-h-64 overflow-y-auto">
                   {resultadosBusca?.length === 0 && (
                     <p className="px-4 py-3 text-xs text-gray-400 text-center">Nenhum aluno encontrado.</p>
+                  )}
+                  {!resultadosBusca && (
+                    <p className="px-4 py-3 text-xs text-gray-400 text-center">Carregando alunos...</p>
                   )}
                   {resultadosBusca?.map(a => (
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => { setAluno(a); setBusca(''); }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { setAluno(a); setBusca(''); setInputFocado(false); }}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0 transition-colors"
                     >
                       <span className="font-semibold text-gray-800">{a.nome}</span>

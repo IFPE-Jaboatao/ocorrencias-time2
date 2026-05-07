@@ -2,7 +2,7 @@ import { api } from './client';
 import { Aluno } from '@/types/ocorrencia.types';
 
 export const alunosApi = {
-  buscar: (q: string) =>
+  buscar: (q = '') =>
     api.get<Aluno[]>('/alunos/buscar', { params: { q } }).then(r => r.data),
 
   buscarPorId: (id: string) =>

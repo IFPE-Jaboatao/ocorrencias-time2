@@ -20,10 +20,17 @@ export class AlunosService {
   }
 
   // Busca com escopo por campus/segmento conforme perfil (H-08)
+  // q vazio ou só espaços → retorna todos os alunos do escopo (usado no dropdown ao clicar)
   async buscar(matriculaOuNome: string, usuario: AuthenticatedUser): Promise<Aluno[]> {
+    const termo = matriculaOuNome.trim();
     const qb = this.repo.createQueryBuilder('a')
-      .where('(a.matricula LIKE :q OR a.nome LIKE :q)', { q: `%${matriculaOuNome}%` })
-      .andWhere('a.status = :status', { status: StatusAluno.ATIVO });
+      .andWhere('a.status = :status', { status: StatusAluno.ATIVO })
+      .orderBy('a.nome', 'ASC')
+      .take(50); // limite de segurança
+
+    if (termo) {
+      qb.andWhere('(a.matricula LIKE :q OR a.nome LIKE :q)', { q: `%${termo}%` });
+    }
 
     if (usuario.perfil !== PerfilUsuario.ADMIN && usuario.perfil !== PerfilUsuario.DIRETOR) {
       qb.andWhere('a.campus = :campus', { campus: usuario.campus });
