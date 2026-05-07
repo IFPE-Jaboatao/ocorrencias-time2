@@ -8,7 +8,7 @@ import {
   LogOut, Menu, X, Building2, ChevronRight,
   Users, Tag, BarChart3, GraduationCap,
 } from 'lucide-react';
-import { getCurrentUser, clearTokens, getRefreshToken } from '@/lib/auth/session';
+import { getMe, logout as sessionLogout } from '@/lib/auth/session';
 import { authApi } from '@/lib/api/auth.api';
 import type { AuthenticatedUser } from '@/types/ocorrencia.types';
 
@@ -42,22 +42,21 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebar] = useState(false);
 
   useEffect(() => {
-    const current = getCurrentUser();
-    if (!current) {
-      router.replace('/login');
-    } else {
-      setUser(current);
-      setChecked(true);
-    }
+    getMe().then((current) => {
+      if (!current) {
+        router.replace('/login');
+      } else {
+        setUser(current);
+        setChecked(true);
+      }
+    });
   }, [router]);
 
   // Fechar sidebar ao navegar no mobile
   useEffect(() => { setSidebar(false); }, [pathname]);
 
   async function handleLogout() {
-    const rt = getRefreshToken();
-    if (rt) { try { await authApi.logout(rt); } catch { /* ignore */ } }
-    clearTokens();
+    await sessionLogout();
     router.replace('/login');
   }
 

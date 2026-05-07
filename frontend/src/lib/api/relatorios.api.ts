@@ -1,5 +1,4 @@
 import { api } from './client';
-import { getAccessToken } from '../auth/session';
 
 export interface FiltrosRelatorio {
   dataInicio?: string;
@@ -35,7 +34,6 @@ export const relatoriosApi = {
   },
 
   exportarCsv: async (filtros: FiltrosRelatorio): Promise<void> => {
-    const token = getAccessToken();
     const params = new URLSearchParams();
     Object.entries(filtros).forEach(([k, v]) => {
       if (v !== undefined && v !== '') params.append(k, String(v));
@@ -43,9 +41,7 @@ export const relatoriosApi = {
     const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     const url  = `${base}/api/v1/relatorios/exportar${params.toString() ? '?' + params.toString() : ''}`;
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetch(url, { credentials: 'include' });
 
     if (!response.ok) throw new Error('Falha ao exportar relatório.');
 

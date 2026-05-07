@@ -1,39 +1,29 @@
 'use client';
 
-import { AuthenticatedUser } from '@/types/ocorrencia.types';
+import type { AuthenticatedUser } from '@/types/ocorrencia.types';
 
-const ACCESS_TOKEN_KEY  = 'radar_access';
-const REFRESH_TOKEN_KEY = 'radar_refresh';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-export function saveTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY,  accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-}
-
-export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-export function decodeJwt(token: string): AuthenticatedUser | null {
+/** Busca dados do usuário autenticado via cookie HttpOnly (GET /auth/me). */
+export async function getMe(): Promise<AuthenticatedUser | null> {
   try {
-    const payload = token.split('.')[1];
-    return JSON.parse(atob(payload)) as AuthenticatedUser;
+    const res = await fetch(`${BASE_URL}/api/v1/auth/me`, {
+      credentials: 'include',
+      cache:       'no-store',
+    });
+    if (!res.ok) return null;
+    return res.json() as Promise<AuthenticatedUser>;
   } catch {
     return null;
   }
 }
 
-export function getCurrentUser(): AuthenticatedUser | null {
-  const token = getAccessToken();
-  if (!token) return null;
-  return decodeJwt(token);
+/** Encerra sessão — limpa cookies via POST /auth/logout. */
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${BASE_URL}/api/v1/auth/logout`, {
+      method:      'POST',
+      credentials: 'include',
+    });
+  } catch { /* best-effort */ }
 }

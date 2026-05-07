@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api/auth.api';
-import { saveTokens } from '@/lib/auth/session';
 
 function CallbackInner() {
   const router       = useRouter();
@@ -18,11 +17,9 @@ function CallbackInner() {
       return;
     }
 
+    // Backend seta os cookies HttpOnly (sgoa_token + sgoa_refresh) automaticamente
     authApi.verificarMagicLink(token)
-      .then(({ accessToken, refreshToken }) => {
-        saveTokens(accessToken, refreshToken);
-        router.replace('/dashboard');
-      })
+      .then(() => router.replace('/dashboard'))
       .catch(() => setError('Link inválido ou já utilizado. Solicite um novo link.'));
   }, [searchParams, router]);
 

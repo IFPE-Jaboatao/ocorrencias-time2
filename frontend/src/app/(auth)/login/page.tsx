@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Send, Loader2, ShieldCheck, Zap } from 'lucide-react';
 import { authApi }   from '@/lib/api/auth.api';
-import { saveTokens } from '@/lib/auth/session';
 
 const DEV_USERS = [
   { label: 'Professor',    email: 'professor@escola.edu.br',   cor: 'text-blue-600 bg-blue-50 border-blue-200' },
@@ -41,8 +40,7 @@ export default function LoginPage() {
     setDevLoading(userEmail);
     setError('');
     try {
-      const { accessToken, refreshToken } = await authApi.devLogin(userEmail);
-      saveTokens(accessToken, refreshToken);
+      await authApi.devLogin(userEmail);
       router.push('/dashboard');
     } catch {
       setError('Falha no login de desenvolvimento.');

@@ -1,36 +1,41 @@
 import axios from 'axios';
-import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from '../auth/session';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-export const api = axios.create({ baseURL: `${BASE_URL}/api/v1` });
+export const api = axios.create({
+  baseURL:         `${BASE_URL}/api/v1`,
+  withCredentials: true,   // envia cookies HttpOnly automaticamente
+});
 
+/** Lê csrf_token (cookie não-HttpOnly) para injetar como X-CSRF-Token. */
+function getCsrfCookie(): string {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+// Injeta X-CSRF-Token em todas as mutações
 api.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const method = config.method?.toUpperCase() ?? '';
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+    const csrf = getCsrfCookie();
+    if (csrf) config.headers['X-CSRF-Token'] = csrf;
+  }
   return config;
 });
 
+// Em 401, tenta refresh via cookie sgoa_refresh; se falhar, redireciona para login
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
-      const refresh = getRefreshToken();
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}/api/v1/auth/refresh`, { refreshToken: refresh });
-          saveTokens(data.accessToken, data.refreshToken);
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(original);
-        } catch {
-          clearTokens();
-          window.location.href = '/login';
-        }
-      } else {
-        clearTokens();
-        window.location.href = '/login';
+      try {
+        await axios.post(`${BASE_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
+        return api(original);
+      } catch {
+        if (typeof window !== 'undefined') window.location.href = '/login';
       }
     }
     return Promise.reject(error);

@@ -11,7 +11,7 @@ import {
   CheckCircle, AlertCircle, X,
 } from 'lucide-react';
 import { alunosApi } from '@/lib/api/alunos.api';
-import { getCurrentUser } from '@/lib/auth/session';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import type { Aluno } from '@/types/ocorrencia.types';
 
 const SEGMENTO_LABEL: Record<string, string> = {
@@ -35,7 +35,7 @@ const STATUS_COR: Record<string, string> = {
 interface ImportResult { importados: number; ignorados: number; erros: string[] }
 
 export default function AlunosPage() {
-  const user = getCurrentUser();
+  const user = useCurrentUser();
   const podeEditar = user?.perfil === 'ADMIN' || user?.perfil === 'SECRETARIA';
 
   const [page, setPage]               = useState(1);

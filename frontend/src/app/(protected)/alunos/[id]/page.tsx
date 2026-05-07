@@ -15,7 +15,7 @@ import { alunosApi } from '@/lib/api/alunos.api';
 import { ocorrenciasApi } from '@/lib/api/ocorrencias.api';
 import { SeveridadeBadge } from '@/components/ocorrencias/SeveridadeBadge';
 import { SlaIndicator } from '@/components/ocorrencias/SlaIndicator';
-import { getCurrentUser } from '@/lib/auth/session';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import type { Ocorrencia } from '@/types/ocorrencia.types';
 import { STATUS_LABELS, STATUS_CORES } from '@/lib/constants/ocorrencia.constants';
 
@@ -38,7 +38,7 @@ export default function AlunoDetalhePage() {
   const { id }   = useParams<{ id: string }>();
   const router   = useRouter();
   const qc       = useQueryClient();
-  const user     = getCurrentUser();
+  const user     = useCurrentUser();
   const podeEditar = user?.perfil === 'ADMIN' || user?.perfil === 'SECRETARIA';
 
   const [editando, setEditando] = useState(false);

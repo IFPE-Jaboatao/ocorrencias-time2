@@ -1,8 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
-import { getCurrentUser } from '../auth/session';
+import { useQuery } from '@tanstack/react-query';
+import { getMe }    from '../auth/session';
 
 export function useCurrentUser() {
-  return useMemo(() => getCurrentUser(), []);
+  const { data } = useQuery({
+    queryKey: ['me'],
+    queryFn:  getMe,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  return data ?? null;
 }
