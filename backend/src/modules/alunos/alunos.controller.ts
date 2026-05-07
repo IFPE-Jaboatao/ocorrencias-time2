@@ -39,7 +39,6 @@ export class AlunosController {
 
   /** GET /alunos — Listagem paginada com filtros */
   @Get()
-  @Serialize(AlunoResponseDto)
   @ApiOperation({ summary: 'Listar alunos com paginação e filtros' })
   @ApiResponse({ status: 200, description: 'Lista paginada de alunos' })
   listar(@Query() filtros: FilterAlunoDto, @CurrentUser() user: AuthenticatedUser) {
