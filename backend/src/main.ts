@@ -19,8 +19,6 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.setGlobalPrefix('api/v1');
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist:            true,
@@ -31,16 +29,26 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  if (process.env.NODE_ENV !== 'production') {
+  // Swagger ANTES do setGlobalPrefix — evita que o prefixo 'api/v1' seja
+  // herdado pela rota /api/docs, resultando em /api/v1/api/docs (404)
+  // Ativado quando NODE_ENV != production OU SWAGGER_ENABLED=true
+  const swaggerAtivo =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.SWAGGER_ENABLED === 'true';
+
+  if (swaggerAtivo) {
     const config = new DocumentBuilder()
       .setTitle('Radar Acadêmico — Gestão de Ocorrências')
       .setDescription('API REST para gestão do ciclo de vida de ocorrências acadêmicas')
       .setVersion('1.0')
+      .addServer('/api/v1', 'API v1')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'jwt')
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
   }
+
+  app.setGlobalPrefix('api/v1');
 
   await app.listen(process.env.PORT ?? 3001);
 }
