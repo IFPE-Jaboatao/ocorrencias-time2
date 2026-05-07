@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   ApiBearerAuth, ApiOperation, ApiParam,
   ApiResponse, ApiTags,
@@ -6,13 +6,13 @@ import {
 import { UsuariosService }    from './usuarios.service';
 import { CreateUsuarioDto }   from './dto/create-usuario.dto';
 import { UsuarioResponseDto } from './dto/usuario-response.dto';
+import { UpdateUsuarioTurmasDto } from './dto/update-usuario-turmas.dto';
 import { Roles }              from '../../common/decorators/roles.decorator';
 import { Serialize }          from '../../common/interceptors/serialize.interceptor';
 import { PerfilUsuario }      from '../../common/enums/perfil-usuario.enum';
 
 @ApiTags('Usuários')
 @ApiBearerAuth('jwt')
-@Serialize(UsuarioResponseDto)
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly service: UsuariosService) {}
@@ -24,6 +24,7 @@ export class UsuariosController {
   @ApiResponse({ status: 400, description: 'DTO inválido' })
   @ApiResponse({ status: 403, description: 'Requer perfil ADMIN' })
   @ApiResponse({ status: 409, description: 'E-mail já cadastrado' })
+  @Serialize(UsuarioResponseDto)
   criar(@Body() dto: CreateUsuarioDto) {
     return this.service.criar(dto);
   }
@@ -33,8 +34,29 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Listar todos os usuários ativos (RF-14)' })
   @ApiResponse({ status: 200, description: 'Lista de usuários com ativo = true', type: [UsuarioResponseDto] })
   @ApiResponse({ status: 403, description: 'Requer perfil ADMIN ou DIRETOR' })
+  @Serialize(UsuarioResponseDto)
   listar() {
     return this.service.listar();
+  }
+
+  @Get(':id/turmas')
+  @Roles(PerfilUsuario.ADMIN, PerfilUsuario.DIRETOR)
+  @ApiOperation({ summary: 'Listar turmas autorizadas para um usuario' })
+  @ApiParam({ name: 'id', description: 'UUID do usuario' })
+  @ApiResponse({ status: 200, description: 'Vinculos ativos do usuario com turmas' })
+  listarTurmas(@Param('id') id: string) {
+    return this.service.listarTurmas(id);
+  }
+
+  @Put(':id/turmas')
+  @Roles(PerfilUsuario.ADMIN)
+  @ApiOperation({ summary: 'Substituir autorizacoes de turmas de um usuario' })
+  @ApiParam({ name: 'id', description: 'UUID do usuario' })
+  @ApiResponse({ status: 200, description: 'Autorizacoes atualizadas' })
+  @ApiResponse({ status: 400, description: 'Turma invalida ou inativa' })
+  @ApiResponse({ status: 403, description: 'Requer perfil ADMIN' })
+  atualizarTurmas(@Param('id') id: string, @Body() dto: UpdateUsuarioTurmasDto) {
+    return this.service.atualizarTurmas(id, dto);
   }
 
   @Get(':id')
@@ -44,6 +66,7 @@ export class UsuariosController {
   @ApiResponse({ status: 200, description: 'Dados do usuário', type: UsuarioResponseDto })
   @ApiResponse({ status: 403, description: 'Requer perfil ADMIN ou DIRETOR' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @Serialize(UsuarioResponseDto)
   buscarPorId(@Param('id') id: string) {
     return this.service.buscarPorId(id);
   }
@@ -56,6 +79,7 @@ export class UsuariosController {
   @ApiResponse({ status: 400, description: 'Perfil inválido' })
   @ApiResponse({ status: 403, description: 'Requer perfil ADMIN' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @Serialize(UsuarioResponseDto)
   alterarPerfil(@Param('id') id: string, @Body('perfil') perfil: PerfilUsuario) {
     return this.service.alterarPerfil(id, perfil);
   }

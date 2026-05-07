@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { usuariosApi, type CreateUsuarioPayload } from '@/lib/api/usuarios.api';
+import { usuariosApi, type CreateUsuarioPayload, type Usuario } from '@/lib/api/usuarios.api';
+import { turmasApi } from '@/lib/api/turmas.api';
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import type { PerfilUsuario, Segmento } from '@/types/ocorrencia.types';
 import {
   Users, Plus, UserX, ChevronDown, AlertCircle,
-  Shield, Mail, Building2, BookOpen, X, Check,
+  Shield, Mail, Building2, BookOpen, X, Check, KeyRound, Save,
 } from 'lucide-react';
 
 const PERFIL_LABEL: Record<string, string> = {
@@ -55,14 +56,29 @@ export default function UsuariosAdminPage() {
     queryFn:  usuariosApi.listar,
   });
 
+  const { data: turmas = [], isLoading: loadingTurmas } = useQuery({
+    queryKey: ['turmas'],
+    queryFn:  () => turmasApi.listar(),
+  });
+
   const [showForm, setShowForm]       = useState(false);
   const [form, setForm]               = useState<CreateUsuarioPayload>(initForm());
   const [formError, setFormError]     = useState('');
   const [success, setSuccess]         = useState('');
   const [editPerfil, setEditPerfil]   = useState<{ id: string; perfil: PerfilUsuario } | null>(null);
   const [confirmDel, setConfirmDel]   = useState<string | null>(null);
+  const [authUser, setAuthUser]       = useState<Usuario | null>(null);
+  const [draftTurmaIds, setDraftTurmaIds] = useState<string[] | null>(null);
 
   const isAdmin = user?.perfil === 'ADMIN';
+
+  const { data: turmasUsuario = [], isFetching: loadingAuth } = useQuery({
+    queryKey: ['usuarios', authUser?.id, 'turmas'],
+    queryFn:  () => usuariosApi.listarTurmas(authUser!.id),
+    enabled:  !!authUser,
+  });
+
+  const selectedTurmaIds = draftTurmaIds ?? turmasUsuario.map(v => v.turmaId);
 
   const criarMut = useMutation({
     mutationFn: () => usuariosApi.criar(form),
@@ -85,6 +101,16 @@ export default function UsuariosAdminPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['usuarios'] }); setConfirmDel(null); },
   });
 
+  const atualizarTurmasMut = useMutation({
+    mutationFn: () => usuariosApi.atualizarTurmas(authUser!.id, selectedTurmaIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['usuarios', authUser?.id, 'turmas'] });
+      setSuccess(`Autorizações de "${authUser?.nome}" atualizadas.`);
+      setTimeout(() => setSuccess(''), 4000);
+    },
+    onError: (e: unknown) => setFormError(e instanceof Error ? e.message : 'Erro ao atualizar autorizações.'),
+  });
+
   function toggleSegmento(seg: Segmento) {
     setForm(f => ({
       ...f,
@@ -92,6 +118,20 @@ export default function UsuariosAdminPage() {
         ? f.segmentosResponsaveis.filter(s => s !== seg)
         : [...(f.segmentosResponsaveis ?? []), seg],
     }));
+  }
+
+  function abrirAutorizacoes(usuario: Usuario) {
+    setAuthUser(usuario);
+    setDraftTurmaIds(null);
+    setFormError('');
+  }
+
+  function toggleTurma(turmaId: string) {
+    setDraftTurmaIds(ids => {
+      const current = ids ?? selectedTurmaIds;
+      return current.includes(turmaId) ? current.filter(id => id !== turmaId) : [...current, turmaId];
+    },
+    );
   }
 
   const canSubmit = form.nome.trim().length >= 3
@@ -232,6 +272,86 @@ export default function UsuariosAdminPage() {
         </div>
       )}
 
+      {authUser && isAdmin && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <KeyRound size={18} className="text-gray-400" />
+                Autorizações por turma
+              </h2>
+              <p className="text-sm text-gray-400 mt-0.5">
+                {authUser.nome} · {PERFIL_LABEL[authUser.perfil] ?? authUser.perfil}
+              </p>
+            </div>
+            <button onClick={() => setAuthUser(null)} className="text-gray-400 hover:text-gray-600 p-1">
+              <X size={18} />
+            </button>
+          </div>
+
+          {loadingTurmas || loadingAuth ? (
+            <div className="py-8 flex justify-center">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : turmas.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4">Nenhuma turma ativa cadastrada.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {turmas.map(turma => {
+                const selected = selectedTurmaIds.includes(turma.id);
+                return (
+                  <button
+                    key={turma.id}
+                    type="button"
+                    onClick={() => toggleTurma(turma.id)}
+                    className={`text-left rounded-xl border px-4 py-3 transition-colors ${
+                      selected
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-100 bg-gray-50/60 hover:border-blue-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{turma.nome}</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {turma.curso} · {SEGMENTO_LABEL[turma.segmento] ?? turma.segmento} · {turma.campus}
+                        </p>
+                      </div>
+                      <span className={`mt-0.5 h-5 w-5 rounded-md border flex items-center justify-center flex-shrink-0 ${
+                        selected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'
+                      }`}>
+                        {selected && <Check size={13} />}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {formError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-xl p-3">
+              <AlertCircle size={15} />
+              {formError}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => atualizarTurmasMut.mutate()}
+              disabled={atualizarTurmasMut.isPending || loadingAuth}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+            >
+              <Save size={15} />
+              {atualizarTurmasMut.isPending ? 'Salvando...' : 'Salvar autorizações'}
+            </button>
+            <span className="text-xs text-gray-400">
+              {selectedTurmaIds.length} turma{selectedTurmaIds.length !== 1 ? 's' : ''} selecionada{selectedTurmaIds.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Lista de usuários */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {isLoading ? (
@@ -344,6 +464,14 @@ export default function UsuariosAdminPage() {
                           <button onClick={() => setConfirmDel(null)} className="text-xs text-gray-400 hover:text-gray-600">Não</button>
                         </div>
                       ) : (
+                        <>
+                        <button
+                          onClick={() => abrirAutorizacoes(u)}
+                          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Gerenciar autorizacoes"
+                        >
+                          <KeyRound size={14} />
+                        </button>
                         <button
                           onClick={() => setConfirmDel(u.id)}
                           className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
@@ -351,6 +479,7 @@ export default function UsuariosAdminPage() {
                         >
                           <UserX size={14} />
                         </button>
+                        </>
                       )}
                     </td>
                   )}
