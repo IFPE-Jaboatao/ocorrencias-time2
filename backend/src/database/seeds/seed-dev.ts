@@ -33,6 +33,20 @@ async function seed() {
       )
     `);
 
+    // ── Guarda idempotente: abortar se o seed já foi executado ────────────────
+    const [{ total }] = await q.query(
+      `SELECT COUNT(*) AS total FROM categorias_ocorrencia`
+    );
+    if (Number(total) > 0) {
+      console.log('');
+      console.log('⚠️  Seed já foi executado anteriormente (categorias encontradas).');
+      console.log('   Para re-executar, limpe as tabelas manualmente ou use:');
+      console.log('   npm run seed:reset  (apaga tudo e re-insere)');
+      console.log('');
+      await q.rollbackTransaction();
+      return;
+    }
+
     // ── Usuários de teste ──────────────────────────────────────────────────
     const usuarios = [
       { nome: 'Professor Silva',   email: 'professor@escola.edu.br',   perfil: 'PROFESSOR',    campus: 'Campus A', segmentos: JSON.stringify(['FUNDAMENTAL']) },
