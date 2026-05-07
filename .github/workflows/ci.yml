@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend — lint · test · build
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sgoa_test
+          MYSQL_USER: sgoa_user
+          MYSQL_PASSWORD: sgoa_pass
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --log_bin_trust_function_creators=1
+        ports:
+          - 3307:3306
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes unitários
+        run: npm run test -- --forceExit --ci
+
+      - name: Testes E2E
+        run: npm run test:e2e -- --forceExit
+        env:
+          DB_HOST: localhost
+          DB_PORT: 3307
+          DB_NAME: sgoa_test
+          DB_USER: sgoa_user
+          DB_PASS: sgoa_pass
+          JWT_SECRET: ci-jwt-secret-not-used-in-production
+          JWT_EXPIRES_IN: 8h
+          JWT_REFRESH_EXPIRES_IN: 7d
+          MAGIC_LINK_SECRET: ci-magic-link-secret-not-used-in-production
+          MAGIC_LINK_TTL_MINUTES: 15
+          ENCRYPTION_KEY: d0c84b04f477f81ca7772ee5e82cfcd90235e0cc7656239ae0aa228579c71b2c
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
+          EMAIL_FROM: noreply@teste.edu.br
+          CLAMAV_HOST: localhost
+          CLAMAV_PORT: 3310
+          AWS_REGION: us-east-1
+          AWS_S3_BUCKET: sgoa-test
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          NODE_ENV: test
+          FRONTEND_URL: http://localhost:3000
+          DEV_LOGIN_ENABLED: "true"
+          SESSION_TIMEOUT_HOURS: "8"
+
+      # Build de produção — detecta erros de compilação TypeScript que
+      # ts-jest/isolatedModules não vê (H-27)
+      - name: Build de produção
+        run: npm run build
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — type-check · build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      # Build de produção — detecta erros específicos do Next.js que
+      # tsc --noEmit não vê (middleware conflicts, missing env vars, etc.)
+      - name: Build de produção
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_DEV_LOGIN_ENABLED: "false"

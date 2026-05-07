@@ -1241,6 +1241,35 @@ backend:
 > O `.env` continua com `DB_PORT=3307` para desenvolvimento local (`npm run start:dev`
 > fora do Docker), e o `docker-compose.yml` sobrescreve apenas para o container.
 
+### H-27: `ts-jest` não detecta erros TypeScript que `nest build` detecta
+**Problema:** `ts-jest` compila cada arquivo de forma isolada (`isolatedModules: true`)
+sem verificação de tipos entre módulos. Isso significa que erros como:
+- `import * as cookieParser from 'cookie-parser'` — namespace import não chamável
+- Tipos incompatíveis entre módulos diferentes
+- Decoradores mal configurados
+
+...passam nos testes unitários e de integração, e só quebram no `npm run build`
+(que roda o `tsc` completo via `nest build`). O mesmo vale para `next build` no
+frontend — detecta erros específicos do framework (conflito de arquivos middleware,
+imports de server components em client components, etc.) que `tsc --noEmit` não vê.
+
+**Solução:** `npm run build` é obrigatório no final do pipeline de CI, após todos os
+testes. Nunca considerar o CI completo sem que o build de produção também passe.
+O workflow `.github/workflows/ci.yml` enforça isso automaticamente.
+
+```bash
+# Erro que ts-jest não detecta, mas nest build detecta:
+import * as cookieParser from 'cookie-parser';
+app.use(cookieParser());   # TS2349: This expression is not callable
+
+# Correção (default import com esModuleInterop: true):
+import cookieParser from 'cookie-parser';
+app.use(cookieParser());   # ✅
+```
+
+**Regra:** ao instalar qualquer pacote novo, testar `npm run build` localmente antes
+do commit. O `make build` na raiz roda build de backend e frontend em sequência.
+
 
 ---
 
@@ -1438,8 +1467,43 @@ Antes de marcar qualquer feature como completa, verificar:
 
 ## 14. Pipeline de CI — Obrigatório em Todo Commit
 
-> Comandos completos em §19.6. Regra: nenhum commit vai para `main` com CI quebrado.
+> Regra: nenhum commit vai para `main` com CI quebrado.
 > Vulnerabilidade `high`/`critical` no `npm audit` é bloqueante.
+
+### Pipeline automático (GitHub Actions — `.github/workflows/ci.yml`)
+
+Dispara em todo push para `main`/`develop` e em todo Pull Request.
+Dois jobs paralelos:
+
+| Job | Passos |
+|---|---|
+| **backend** | lint → testes unitários → testes E2E (MySQL service) → **build de produção** |
+| **frontend** | type-check → **build de produção** |
+
+### Rodar o CI completo localmente antes de abrir PR
+
+```bash
+# Equivalente completo ao que o GitHub Actions roda
+make ci
+
+# Ou separado por lado
+make ci-backend    # lint + test + test:e2e + build
+make ci-frontend   # type-check + lint + build
+
+# Atalhos rápidos
+make test          # só unitários do backend
+make type-check    # tsc --noEmit em backend e frontend
+make build         # nest build + next build (sem testes)
+make docker-build  # docker compose build
+```
+
+### Por que o build de produção é obrigatório no CI
+
+`ts-jest` usa `isolatedModules: true` — transpila cada arquivo separadamente
+sem verificação de tipos entre módulos. Isso permite que erros TypeScript reais
+passem nos testes e só sejam detectados em `npm run build` ou no Docker (ver H-27).
+O `next build` detecta erros específicos do Next.js que o `tsc --noEmit` não vê
+(conflito de arquivos de middleware, env vars ausentes, etc.).
 
 ---
 
