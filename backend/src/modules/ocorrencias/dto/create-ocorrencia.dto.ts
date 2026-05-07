@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsDateString, IsInt, IsNotEmpty, IsOptional,
+  IsBoolean, IsDateString, IsInt, IsNotEmpty, IsOptional,
   IsString, IsUUID, Max, MaxLength, Min, MinLength,
 } from 'class-validator';
 
@@ -35,5 +35,6 @@ export class CreateOcorrenciaDto {
 
   @ApiPropertyOptional({ description: 'Aprovação do diretor para datas retroativas > 90 dias' })
   @IsOptional()
+  @IsBoolean()
   aprovacaoRetroativaDiretor?: boolean;
 }

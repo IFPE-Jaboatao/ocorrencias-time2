@@ -14,6 +14,7 @@ import { UsuariosModule }       from './modules/usuarios/usuarios.module';
 import { CategoriasModule }     from './modules/categorias/categorias.module';
 import { AlunosModule }         from './modules/alunos/alunos.module';
 import { ResponsaveisModule }   from './modules/responsaveis/responsaveis.module';
+import { TurmasModule }         from './modules/turmas/turmas.module';
 import { AuditoriaModule }      from './modules/auditoria/auditoria.module';
 import { SlaModule }            from './modules/sla/sla.module';
 import { OcorrenciasModule }    from './modules/ocorrencias/ocorrencias.module';
@@ -43,6 +44,7 @@ import { EvidenciasModule }     from './modules/evidencias/evidencias.module';
     CategoriasModule,
     AlunosModule,
     ResponsaveisModule,
+    TurmasModule,
     SlaModule,
     OcorrenciasModule,
     ValidacoesModule,

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository }       from 'typeorm';
 import { EventEmitter2 }    from '@nestjs/event-emitter';
@@ -41,10 +41,13 @@ export class ValidacoesService {
       [TipoDecisao.ESCALAR]:  StatusOcorrencia.AGUARDANDO_VALIDACAO,
     };
 
-    await this.ocorrenciasService.alterarStatus(ocorrenciaId, decisaoParaStatus[dto.tipoDecisao], validador);
+    const novoStatus = decisaoParaStatus[dto.tipoDecisao];
+    if (novoStatus !== oc.status) {
+      await this.ocorrenciasService.alterarStatus(ocorrenciaId, novoStatus, validador);
+    }
 
     if (dto.severidadeNova && dto.severidadeNova !== oc.severidade) {
-      // Atualiza severidade diretamente via repositório, serviço já foi usado acima
+      await this.ocorrenciasService.alterarSeveridade(ocorrenciaId, dto.severidadeNova, validador);
     }
 
     const validacao = await this.repo.save(
@@ -58,7 +61,16 @@ export class ValidacoesService {
       }),
     );
 
-    this.eventEmitter.emit('ocorrencia.validada', { validacao, ocorrencia: oc, validador });
+    this.eventEmitter.emit('ocorrencia.validada', {
+      validacao,
+      ocorrencia: {
+        ...oc,
+        status: novoStatus,
+        severidade: dto.severidadeNova ?? oc.severidade,
+      },
+      aluno: oc.aluno,
+      validador,
+    });
     return validacao;
   }
 

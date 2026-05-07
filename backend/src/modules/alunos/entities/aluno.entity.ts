@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Segmento }      from '../../../common/enums/segmento.enum';
+import { Turma }         from '../../turmas/entities/turma.entity';
 
 export enum StatusAluno {
   ATIVO       = 'ATIVO',
@@ -33,6 +34,13 @@ export class Aluno {
   @Column()                       curso: string;
 
   @Column()                       turma: string;
+
+  @ManyToOne(() => Turma, turma => turma.alunos, { nullable: true })
+  @JoinColumn({ name: 'turma_id' })
+  turmaRef: Turma | null;
+
+  @Column({ name: 'turma_id', type: 'varchar', length: 36, nullable: true })
+  turmaId: string | null;
 
   @Column({ type: 'enum', enum: StatusAluno, default: StatusAluno.ATIVO })
   status: StatusAluno;

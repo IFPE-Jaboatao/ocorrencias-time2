@@ -8,6 +8,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository }             from 'typeorm';
 import { subDays, parseISO, isAfter }         from 'date-fns';
 import { Ocorrencia }           from './entities/ocorrencia.entity';
+import { UsuarioTurma }         from '../turmas/entities/usuario-turma.entity';
 import { CreateOcorrenciaDto }  from './dto/create-ocorrencia.dto';
 import { FilterOcorrenciaDto }  from './dto/filter-ocorrencia.dto';
 import { AlunosService }        from '../alunos/alunos.service';
@@ -40,6 +41,8 @@ export class OcorrenciasService {
   constructor(
     @InjectRepository(Ocorrencia)
     private readonly repo: Repository<Ocorrencia>,
+    @InjectRepository(UsuarioTurma)
+    private readonly usuarioTurmaRepo: Repository<UsuarioTurma>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly alunosService: AlunosService,
@@ -52,8 +55,16 @@ export class OcorrenciasService {
     // RN-11: data retroativa > 90 dias exige aprovação do diretor
     const dataIncidente = parseISO(dto.dataIncidente);
     const limiteRetro   = subDays(new Date(), DATA_RETROATIVA_MAX_DIAS);
-    if (!dto.aprovacaoRetroativaDiretor && isAfter(limiteRetro, dataIncidente)) {
+    if (isAfter(limiteRetro, dataIncidente) && !dto.aprovacaoRetroativaDiretor) {
       throw new BadRequestException('RN-11: Data retroativa > 90 dias exige aprovação do Diretor');
+    }
+
+    if (
+      isAfter(limiteRetro, dataIncidente) &&
+      dto.aprovacaoRetroativaDiretor &&
+      ![PerfilUsuario.DIRETOR, PerfilUsuario.ADMIN].includes(registrador.perfil)
+    ) {
+      throw new ForbiddenException('RN-11: Apenas Diretor/Admin pode aprovar data retroativa > 90 dias');
     }
 
     const aluno     = await this.alunosService.buscarPorId(dto.alunoId);
@@ -65,7 +76,14 @@ export class OcorrenciasService {
     }
 
     // RN-07: professor não registra ocorrência de aluno de outro campus
-    if (registrador.perfil === PerfilUsuario.PROFESSOR && aluno.campus !== registrador.campus) {
+    if (registrador.perfil === PerfilUsuario.PROFESSOR && aluno.turmaId) {
+      const professorNaTurma = await this.usuarioTurmaRepo.exists({
+        where: { usuarioId: registrador.sub, turmaId: aluno.turmaId, ativo: true },
+      });
+      if (!professorNaTurma) {
+        throw new ForbiddenException('RN-07: Professor so pode registrar ocorrencias de alunos das suas turmas');
+      }
+    } else if (registrador.perfil === PerfilUsuario.PROFESSOR) {
       throw new ForbiddenException('RN-07: Professores só podem registrar ocorrências do próprio campus');
     }
 
@@ -202,6 +220,29 @@ export class OcorrenciasService {
     });
 
     this.eventEmitter.emit('ocorrencia.status_alterado', { ocorrencia: atualizado, statusAnterior: oc.status, usuario });
+    return atualizado;
+  }
+
+  async alterarSeveridade(
+    id: string,
+    novaSeveridade: number,
+    usuario: AuthenticatedUser,
+  ): Promise<Ocorrencia> {
+    const oc = await this.repo.findOneOrFail({ where: { id } });
+
+    if (oc.status === StatusOcorrencia.ARQUIVADA) {
+      throw new ForbiddenException('RN-12: OcorrÃªncia arquivada nÃ£o pode ser alterada');
+    }
+
+    const severidadeAnterior = oc.severidade;
+    const atualizado = await this.repo.save({ ...oc, severidade: novaSeveridade });
+
+    this.eventEmitter.emit('ocorrencia.severidade_alterada', {
+      ocorrencia: atualizado,
+      severidadeAnterior,
+      usuario,
+    });
+
     return atualizado;
   }
 

@@ -44,7 +44,8 @@ export class NotificacoesService {
 
   @OnEvent('ocorrencia.validada')
   async aoOcorrenciaValidada({ ocorrencia, aluno }: { ocorrencia: Ocorrencia; aluno: any }) {
-    await this.despacharAsync(ocorrencia, aluno);
+    const alunoDaOcorrencia = aluno ?? ocorrencia.aluno ?? await this.alunosService.buscarPorId(ocorrencia.alunoId);
+    await this.despacharAsync(ocorrencia, alunoDaOcorrencia);
   }
 
   async despacharAsync(ocorrencia: Ocorrencia, aluno: any): Promise<void> {

@@ -12,6 +12,7 @@ export class AlunoResponseDto {
   @Expose() @ApiProperty() campus: string;
   @Expose() @ApiProperty() curso: string;
   @Expose() @ApiProperty() turma: string;
+  @Expose() @ApiProperty({ nullable: true }) turmaId: string | null;
   @Expose() @ApiProperty({ enum: StatusAluno }) status: StatusAluno;
   @Expose() @ApiProperty() criadoEm: Date;
 }

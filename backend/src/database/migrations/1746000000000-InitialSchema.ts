@@ -50,6 +50,34 @@ export class InitialSchema1746000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      CREATE TABLE turmas (
+        id             VARCHAR(36)  NOT NULL,
+        nome           VARCHAR(100) NOT NULL,
+        segmento       ENUM('FUNDAMENTAL','MEDIO','SUPERIOR') NOT NULL,
+        campus         VARCHAR(100) NOT NULL,
+        curso          VARCHAR(255) NOT NULL,
+        ano_letivo     INT          NOT NULL,
+        ativo          TINYINT(1)   NOT NULL DEFAULT 1,
+        criado_em      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        atualizado_em  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_turmas_contexto (campus, segmento, curso, nome, ano_letivo)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE usuario_turmas (
+        usuario_id  VARCHAR(36) NOT NULL,
+        turma_id    VARCHAR(36) NOT NULL,
+        papel       ENUM('PROFESSOR','COORDENADOR_TURMA') NOT NULL DEFAULT 'PROFESSOR',
+        ativo       TINYINT(1)  NOT NULL DEFAULT 1,
+        PRIMARY KEY (usuario_id, turma_id),
+        CONSTRAINT fk_ut_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+        CONSTRAINT fk_ut_turma   FOREIGN KEY (turma_id)   REFERENCES turmas(id)   ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await queryRunner.query(`
       CREATE TABLE alunos (
         id               VARCHAR(36)  NOT NULL,
         matricula        VARCHAR(50)  NOT NULL UNIQUE,
@@ -61,26 +89,38 @@ export class InitialSchema1746000000000 implements MigrationInterface {
         campus           VARCHAR(100) NOT NULL,
         curso            VARCHAR(255) NOT NULL,
         turma            VARCHAR(50)  NOT NULL,
+        turma_id         VARCHAR(36)  NULL,
         status           ENUM('ATIVO','INATIVO','TRANSFERIDO','FORMADO') NOT NULL DEFAULT 'ATIVO',
         criado_em        DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         atualizado_em    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+        PRIMARY KEY (id),
+        CONSTRAINT fk_aluno_turma FOREIGN KEY (turma_id) REFERENCES turmas(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE responsaveis (
+        id              VARCHAR(36)  NOT NULL,
+        nome            VARCHAR(255) NOT NULL,
+        cpf_encriptado  VARCHAR(512) NULL,
+        email           VARCHAR(255) NOT NULL UNIQUE,
+        telefone        VARCHAR(20)  NOT NULL,
+        criado_em       DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        atualizado_em   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
     await queryRunner.query(`
-      CREATE TABLE responsaveis_legais (
-        id                       VARCHAR(36)  NOT NULL,
-        aluno_id                 VARCHAR(36)  NOT NULL,
-        nome                     VARCHAR(255) NOT NULL,
-        cpf_encriptado           VARCHAR(512) NULL,
-        parentesco               VARCHAR(50)  NOT NULL,
-        email                    VARCHAR(255) NOT NULL,
-        telefone                 VARCHAR(20)  NOT NULL,
-        receber_notificacoes     TINYINT(1)   NOT NULL DEFAULT 1,
-        validado_em              DATETIME     NULL,
-        PRIMARY KEY (id),
-        CONSTRAINT fk_resp_aluno FOREIGN KEY (aluno_id) REFERENCES alunos(id)
+      CREATE TABLE aluno_responsavel (
+        aluno_id              VARCHAR(36) NOT NULL,
+        responsavel_id        VARCHAR(36) NOT NULL,
+        parentesco            VARCHAR(50) NOT NULL,
+        receber_notificacoes  TINYINT(1)  NOT NULL DEFAULT 1,
+        validado_em           DATETIME    NULL,
+        PRIMARY KEY (aluno_id, responsavel_id),
+        CONSTRAINT fk_ar_aluno       FOREIGN KEY (aluno_id)       REFERENCES alunos(id)       ON DELETE CASCADE,
+        CONSTRAINT fk_ar_responsavel FOREIGN KEY (responsavel_id) REFERENCES responsaveis(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -183,7 +223,7 @@ export class InitialSchema1746000000000 implements MigrationInterface {
         destinatario_id   VARCHAR(36)   NOT NULL,
         canal             ENUM('EMAIL','IN_APP') NOT NULL,
         evento            VARCHAR(100)  NOT NULL,
-        status            ENUM('ENVIADO','FALHOU','LIDO') NOT NULL DEFAULT 'ENVIADO',
+        status            ENUM('PENDENTE','ENVIADO','FALHOU','LIDO') NOT NULL DEFAULT 'PENDENTE',
         data_envio        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         data_leitura      DATETIME      NULL,
         PRIMARY KEY (id),
@@ -301,8 +341,11 @@ export class InitialSchema1746000000000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS ocorrencias`);
     await queryRunner.query(`DROP TABLE IF EXISTS codigo_sequencia`);
     await queryRunner.query(`DROP TABLE IF EXISTS categorias_ocorrencia`);
-    await queryRunner.query(`DROP TABLE IF EXISTS responsaveis_legais`);
+    await queryRunner.query(`DROP TABLE IF EXISTS aluno_responsavel`);
+    await queryRunner.query(`DROP TABLE IF EXISTS responsaveis`);
     await queryRunner.query(`DROP TABLE IF EXISTS alunos`);
+    await queryRunner.query(`DROP TABLE IF EXISTS usuario_turmas`);
+    await queryRunner.query(`DROP TABLE IF EXISTS turmas`);
     await queryRunner.query(`DROP TABLE IF EXISTS refresh_tokens`);
     await queryRunner.query(`DROP TABLE IF EXISTS magic_link_tokens`);
     await queryRunner.query(`DROP TABLE IF EXISTS usuarios`);

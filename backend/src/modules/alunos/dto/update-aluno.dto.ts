@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { Segmento }    from '../../../common/enums/segmento.enum';
 import { StatusAluno } from '../entities/aluno.entity';
 
@@ -27,6 +27,10 @@ export class UpdateAlunoDto {
   @ApiPropertyOptional({ example: '3ºA' })
   @IsOptional() @IsString()
   turma?: string;
+
+  @ApiPropertyOptional({ description: 'UUID da turma cadastrada' })
+  @IsOptional() @IsUUID()
+  turmaId?: string;
 
   @ApiPropertyOptional({ enum: StatusAluno })
   @IsOptional() @IsEnum(StatusAluno)

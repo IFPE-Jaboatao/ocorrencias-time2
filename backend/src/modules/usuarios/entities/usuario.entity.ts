@@ -4,9 +4,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { PerfilUsuario } from '../../../common/enums/perfil-usuario.enum';
 import { Segmento }      from '../../../common/enums/segmento.enum';
+import { UsuarioTurma }  from '../../turmas/entities/usuario-turma.entity';
 
 @Entity('usuarios')
 export class Usuario {
@@ -33,4 +35,7 @@ export class Usuario {
 
   @CreateDateColumn({ name: 'criado_em' })    criadoEm: Date;
   @UpdateDateColumn({ name: 'atualizado_em' }) atualizadoEm: Date;
+
+  @OneToMany(() => UsuarioTurma, usuarioTurma => usuarioTurma.usuario)
+  turmas: UsuarioTurma[];
 }
