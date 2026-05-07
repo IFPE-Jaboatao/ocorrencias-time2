@@ -1188,6 +1188,32 @@ await ds.query(`
 `);
 ```
 
+### H-26: Seeds idempotentes precisam atualizar escopos novos
+**Problema:** `findOrCreate()` em seeds de teste retorna o registro existente sem aplicar
+campos adicionados depois. Ao introduzir `turmas` e `usuario_turmas`, alunos E2E antigos
+continuavam com `turma_id = NULL`, fazendo a RN-07 bloquear professor com 403 mesmo com a
+turma criada.
+
+**Solução:** Quando um campo novo vira requisito de escopo/autorizacao, o seed deve ser
+autocorretivo: depois do `findOrCreate()`, comparar o campo critico e executar `update`
+se estiver divergente. Tambem criar os vinculos de permissao antes dos testes que passam
+por guards/regras de negocio.
+
+### H-25: Entity, migration e seed podem divergir silenciosamente
+**Problema:** O TypeORM carrega todas as `*.entity.ts` pelo glob de configuração, mas
+as migrations e seeds são SQL/manual. Se um modelo evolui (ex: `responsaveis_legais`
+vira `responsaveis` + `aluno_responsavel`) e a entity antiga continua no diretório,
+os testes com `synchronize: true` podem mascarar a divergência enquanto um banco criado
+por migration quebra em runtime.
+
+**Solução:** Ao mudar modelo de dados, atualizar os três pontos na mesma alteração:
+1. Entity ativa em `src/modules/**/entities`
+2. Migration que cria o schema
+3. Seed e `test/helpers/global-setup.ts`
+
+Remover entities obsoletas em vez de deixá-las "sem uso"; o glob do TypeORM ainda as
+considera metadados válidos.
+
 ### H-20: `DB_PORT` no `.env` é a porta do host; dentro do Docker é sempre 3306
 **Problema:** O `.env` define `DB_PORT=3307` (porta mapeada no host para evitar conflito com
 MySQL local). Dentro da rede Docker, o backend deve conectar em `db:3306`. Se o backend
