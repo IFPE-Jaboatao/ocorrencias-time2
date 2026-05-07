@@ -50,6 +50,8 @@ describe('AlunosService', () => {
     qb = {
       where:    jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
+      orderBy:  jest.fn().mockReturnThis(),
+      take:     jest.fn().mockReturnThis(),
       getMany:  jest.fn().mockResolvedValue([]),
     };
 
@@ -135,9 +137,19 @@ describe('AlunosService', () => {
     it('deve buscar por matrícula ou nome com LIKE', async () => {
       await service.buscar('2026', makeUser());
 
-      expect(qb.where).toHaveBeenCalledWith(
+      // Filtro de texto usa andWhere (condicional — só quando termo não vazio)
+      expect(qb.andWhere).toHaveBeenCalledWith(
         '(a.matricula LIKE :q OR a.nome LIKE :q)',
         { q: '%2026%' },
+      );
+    });
+
+    it('query vazia retorna todos os alunos sem filtro de texto', async () => {
+      await service.buscar('', makeUser());
+
+      const andWhereCalls = qb.andWhere.mock.calls.map((c: any[]) => c[0]);
+      expect(andWhereCalls).not.toContain(
+        expect.stringContaining('matricula LIKE'),
       );
     });
   });
