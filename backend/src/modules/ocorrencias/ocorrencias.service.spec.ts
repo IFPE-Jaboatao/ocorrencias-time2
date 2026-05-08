@@ -58,11 +58,22 @@ const makeRepo = () => ({
   createQueryBuilder: jest.fn(),
 });
 
-const makeDataSource = () => ({
-  query: jest.fn()
-    .mockResolvedValueOnce([])                  // INSERT ON DUPLICATE KEY
-    .mockResolvedValueOnce([{ ultimo_seq: 1 }]),// SELECT ultimo_seq
-});
+const makeDataSource = () => {
+  let callCount = 0;
+  const qr = {
+    connect:  jest.fn().mockResolvedValue(undefined),
+    query:    jest.fn().mockImplementation(() => {
+      callCount++;
+      // Par calls: INSERT (odd) → [], SELECT (even) → [{ seq: N }]
+      return Promise.resolve(callCount % 2 === 1 ? [] : [{ seq: Math.ceil(callCount / 2) }]);
+    }),
+    release:  jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    query:              jest.fn(),
+    createQueryRunner:  jest.fn().mockReturnValue(qr),
+  };
+};
 
 // ─── Suite ──────────────────────────────────────────────────────────────────
 
