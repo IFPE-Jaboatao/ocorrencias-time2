@@ -254,6 +254,9 @@ export class OcorrenciasService {
   }
 
   // H-13: geração atômica do código único
+  // QueryRunner dedicado garante que UPDATE e SELECT usem a mesma conexão
+  // do pool — LAST_INSERT_ID() é per-connection no MySQL, dois query()
+  // separados podem usar conexões diferentes e retornar valor errado.
   async gerarCodigo(segmento: Segmento): Promise<string> {
     const prefixo: Record<Segmento, string> = {
       [Segmento.FUNDAMENTAL]: 'FM',
@@ -263,19 +266,20 @@ export class OcorrenciasService {
     const ano = new Date().getFullYear();
     const sig = prefixo[segmento];
 
-    // C-04: INSERT ... ON DUPLICATE KEY + LAST_INSERT_ID() garante atomicidade
-    // sem race condition — dois SELECTs separados não são thread-safe
-    await this.dataSource.query(
-      `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)
-       ON DUPLICATE KEY UPDATE ultimo_seq = LAST_INSERT_ID(ultimo_seq + 1)`,
-      [ano, sig],
-    );
-    const [{ seq }] = await this.dataSource.query(
-      `SELECT LAST_INSERT_ID() AS seq`,
-    );
-    // LAST_INSERT_ID() retorna 0 em INSERT bem-sucedido (primeira linha) — corrigir
-    const ultimoSeq = Number(seq) === 0 ? 1 : Number(seq);
-    return `OC-${ano}-${String(ultimoSeq).padStart(5, '0')}-${sig}`;
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    try {
+      await qr.query(
+        `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)
+         ON DUPLICATE KEY UPDATE ultimo_seq = LAST_INSERT_ID(ultimo_seq + 1)`,
+        [ano, sig],
+      );
+      const [{ seq }] = await qr.query(`SELECT LAST_INSERT_ID() AS seq`);
+      const ultimoSeq = Number(seq) === 0 ? 1 : Number(seq);
+      return `OC-${ano}-${String(ultimoSeq).padStart(5, '0')}-${sig}`;
+    } finally {
+      await qr.release();
+    }
   }
 
   private async contarReincidencias(alunoId: string, categoriaId: string): Promise<number> {
