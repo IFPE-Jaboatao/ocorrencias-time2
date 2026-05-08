@@ -1,8 +1,9 @@
 import { Test, TestingModule }   from '@nestjs/testing';
 import { getRepositoryToken }    from '@nestjs/typeorm';
 import { NotFoundException }     from '@nestjs/common';
-import { CategoriasService }     from './categorias.service';
-import { CategoriaOcorrencia }   from './entities/categoria-ocorrencia.entity';
+import { CategoriasService }        from './categorias.service';
+import { CategoriaOcorrencia }      from './entities/categoria-ocorrencia.entity';
+import { SubcategoriaOcorrencia }   from './entities/subcategoria-ocorrencia.entity';
 
 // ─── Factories ───────────────────────────────────────────────────────────────
 
@@ -42,10 +43,19 @@ describe('CategoriasService', () => {
       update:  jest.fn().mockResolvedValue(undefined),
     };
 
+    const subRepo = {
+      save:       jest.fn().mockImplementation(e => Promise.resolve({ id: 'sub-nova', ...e })),
+      create:     jest.fn().mockImplementation(d => d),
+      find:       jest.fn().mockResolvedValue([]),
+      findOne:    jest.fn().mockResolvedValue(null),
+      update:     jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CategoriasService,
-        { provide: getRepositoryToken(CategoriaOcorrencia), useValue: repo },
+        { provide: getRepositoryToken(CategoriaOcorrencia),   useValue: repo },
+        { provide: getRepositoryToken(SubcategoriaOcorrencia), useValue: subRepo },
       ],
     }).compile();
 
@@ -66,14 +76,14 @@ describe('CategoriasService', () => {
       expect(repo.save).toHaveBeenCalled();
     });
 
-    it('deve usar array vazio como padrão quando subcategorias não fornecidas', async () => {
+    it('deve persistir sem campo subcategorias quando não fornecidas (relação @OneToMany)', async () => {
       const dto = { nome: 'Saúde', severidadePadrao: 2, slaHoras: 72 };
 
       await service.criar(dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ subcategorias: [] }),
-      );
+      // subcategorias é relação @OneToMany — não faz parte do create() da CategoriaOcorrencia
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ nome: 'Saúde' }));
+      expect(repo.save).toHaveBeenCalled();
     });
   });
 
@@ -86,7 +96,9 @@ describe('CategoriasService', () => {
 
       const result = await service.listar();
 
-      expect(repo.find).toHaveBeenCalledWith({ where: { ativo: true } });
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { ativo: true } }),
+      );
       expect(result).toHaveLength(2);
     });
   });

@@ -6,6 +6,7 @@ import { BadRequestException, NotFoundException, UnauthorizedException } from '@
 import { addMinutes, subMinutes } from 'date-fns';
 import { createHash }             from 'crypto';
 import { AuthService }            from './auth.service';
+import { MailService }            from './mail.service';
 import { MagicLinkToken }         from './entities/magic-link-token.entity';
 import { RefreshToken }           from './entities/refresh-token.entity';
 import { Usuario }                from '../usuarios/entities/usuario.entity';
@@ -74,6 +75,7 @@ describe('AuthService', () => {
         { provide: getRepositoryToken(Usuario),        useValue: usuarioRepo },
         { provide: JwtService,                         useValue: jwtService },
         { provide: ConfigService,                      useValue: { get: jest.fn().mockReturnValue('8h') } },
+        { provide: MailService,                        useValue: { enviarMagicLink: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
