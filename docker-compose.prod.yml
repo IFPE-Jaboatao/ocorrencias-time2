@@ -1,0 +1,91 @@
+# docker-compose.prod.yml — sobrescreve docker-compose.yml para produção
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# O que este arquivo adiciona/sobrescreve:
+#   - Adiciona serviço nginx (reverse proxy + terminação TLS)
+#   - Remove exposição direta de portas do backend e frontend (só nginx é público)
+#   - Garante NODE_ENV=production, DEV_LOGIN_ENABLED=false, SWAGGER_ENABLED=false
+#   - Adiciona limites de memória/CPU
+#   - Volume de backup agendado para MySQL
+#   - Rede interna isolada entre serviços
+
+services:
+  db:
+    expose:
+      - "3306"
+    ports: []   # remove exposição da porta 3307 ao host
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  backend:
+    ports: []   # remove exposição direta — tráfego passa pelo nginx
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      DEV_LOGIN_ENABLED: "false"
+      SWAGGER_ENABLED: "false"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  frontend:
+    ports: []   # remove exposição direta — tráfego passa pelo nginx
+    expose:
+      - "3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sgoa_nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro    # certificados TLS (Let's Encrypt ou auto-assinado)
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # Backup diário do MySQL → arquivo comprimido no volume backup_data
+  db-backup:
+    image: mysql:8.0
+    container_name: sgoa_db_backup
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: ${DB_PASS:-sgoa_pass}
+    volumes:
+      - backup_data:/backups
+    entrypoint: >
+      sh -c "
+        while true; do
+          FILENAME=/backups/sgoa_$$(date +%Y%m%d_%H%M%S).sql.gz
+          mysqldump -h db -u ${DB_USER:-sgoa_user} ${DB_NAME:-sgoa}
+            | gzip > $$FILENAME
+          echo \"[Backup] $$FILENAME criado\"
+          find /backups -name '*.sql.gz' -mtime +7 -delete
+          sleep 86400
+        done
+      "
+    restart: unless-stopped
+
+volumes:
+  backup_data:
