@@ -6,6 +6,8 @@ import { Turma }              from '@/modules/turmas/entities/turma.entity';
 import { PapelUsuarioTurma, UsuarioTurma } from '@/modules/turmas/entities/usuario-turma.entity';
 import { PerfilUsuario }      from '@/common/enums/perfil-usuario.enum';
 import { Segmento }           from '@/common/enums/segmento.enum';
+// SubcategoriaOcorrencia é criada separadamente — não inlinada no categoria seed
+import { SubcategoriaOcorrencia } from '@/modules/categorias/entities/subcategoria-ocorrencia.entity';
 
 export interface SeedResult {
   professor: Usuario;
@@ -29,10 +31,11 @@ async function findOrCreate<T extends object>(
 }
 
 export async function seedTestData(dataSource: DataSource): Promise<SeedResult> {
-  const usuarioRepo   = dataSource.getRepository(Usuario);
-  const alunoRepo     = dataSource.getRepository(Aluno);
-  const categoriaRepo = dataSource.getRepository(CategoriaOcorrencia);
-  const turmaRepo     = dataSource.getRepository(Turma);
+  const usuarioRepo    = dataSource.getRepository(Usuario);
+  const alunoRepo      = dataSource.getRepository(Aluno);
+  const categoriaRepo  = dataSource.getRepository(CategoriaOcorrencia);
+  const subcatRepo     = dataSource.getRepository(SubcategoriaOcorrencia);
+  const turmaRepo      = dataSource.getRepository(Turma);
   const usuarioTurmaRepo = dataSource.getRepository(UsuarioTurma);
 
   const professor = await findOrCreate<Usuario>(usuarioRepo,
@@ -75,28 +78,39 @@ export async function seedTestData(dataSource: DataSource): Promise<SeedResult> 
     { usuarioId: professor.id, turmaId: turmaFundamental.id, papel: PapelUsuarioTurma.PROFESSOR, ativo: true },
   );
 
+  // Aluno entity usa 'turma' (string com nome da turma) — não há coluna turmaId
   const alunoMenor = await findOrCreate<Aluno>(alunoRepo,
     { matricula: 'E2E-001' },
-    { matricula: 'E2E-001', nome: 'Aluno Menor E2E', dataNascimento: new Date('2010-01-01'), segmento: Segmento.FUNDAMENTAL, campus: 'Campus A', curso: 'Ensino Fundamental', turma: '5A', turmaId: turmaFundamental.id, status: StatusAluno.ATIVO },
+    { matricula: 'E2E-001', nome: 'Aluno Menor E2E', dataNascimento: new Date('2010-01-01'), segmento: Segmento.FUNDAMENTAL, campus: 'Campus A', curso: 'Ensino Fundamental', turma: '5A', status: StatusAluno.ATIVO },
   );
-  if (alunoMenor.turmaId !== turmaFundamental.id) {
-    await alunoRepo.update(alunoMenor.id, { turmaId: turmaFundamental.id });
-    alunoMenor.turmaId = turmaFundamental.id;
-  }
 
   const alunoMaior = await findOrCreate<Aluno>(alunoRepo,
     { matricula: 'E2E-002' },
-    { matricula: 'E2E-002', nome: 'Aluno Maior E2E', dataNascimento: new Date('2000-01-01'), segmento: Segmento.SUPERIOR, campus: 'Campus A', curso: 'Engenharia', turma: 'ENG2026', turmaId: turmaSuperior.id, status: StatusAluno.ATIVO },
+    { matricula: 'E2E-002', nome: 'Aluno Maior E2E', dataNascimento: new Date('2000-01-01'), segmento: Segmento.SUPERIOR, campus: 'Campus A', curso: 'Engenharia', turma: 'ENG2026', status: StatusAluno.ATIVO },
   );
-  if (alunoMaior.turmaId !== turmaSuperior.id) {
-    await alunoRepo.update(alunoMaior.id, { turmaId: turmaSuperior.id });
-    alunoMaior.turmaId = turmaSuperior.id;
-  }
 
-  const categoria = await findOrCreate<CategoriaOcorrencia>(categoriaRepo,
-    { nome: 'Disciplinar E2E' },
-    { nome: 'Disciplinar E2E', subcategorias: ['Agressão', 'Bullying'], severidadePadrao: 2, slaHoras: 72, exigeNotifResponsavel: false, obrigatorioLegal: false, segmentosAplicaveis: [Segmento.FUNDAMENTAL, Segmento.MEDIO, Segmento.SUPERIOR], exigeValidacao: false, ativo: true },
-  );
+  // Categoria sem subcategorias inlined (subcategorias são entidades @OneToMany)
+  let categoria = await categoriaRepo.findOne({ where: { nome: 'Disciplinar E2E' } });
+  if (!categoria) {
+    categoria = await categoriaRepo.save(categoriaRepo.create({
+      nome: 'Disciplinar E2E', severidadePadrao: 2, slaHoras: 72,
+      exigeNotifResponsavel: false, obrigatorioLegal: false,
+      segmentosAplicaveis: [Segmento.FUNDAMENTAL, Segmento.MEDIO, Segmento.SUPERIOR],
+      exigeValidacao: false, ativo: true,
+    }));
+    // Criar subcategorias separadamente (campos obrigatórios da entidade)
+    for (const nome of ['Agressão', 'Bullying']) {
+      const existeSub = await subcatRepo.findOne({ where: { nome, categoriaId: categoria.id } });
+      if (!existeSub) {
+        await subcatRepo.save(subcatRepo.create({
+          nome, categoriaId: categoria.id,
+          severidadePadrao: 2, slaHoras: 72,
+          exigeValidacao: false, exigeNotifResponsavel: false,
+          obrigatorioLegal: false, ativo: true,
+        }));
+      }
+    }
+  }
 
   return { professor, coordenador, coordenadorB, diretor, admin, alunoMenor, alunoMaior, categoria };
 }
