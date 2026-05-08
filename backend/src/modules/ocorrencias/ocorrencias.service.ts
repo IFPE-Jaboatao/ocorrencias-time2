@@ -55,8 +55,16 @@ export class OcorrenciasService {
     // RN-11: data retroativa > 90 dias exige aprovação do diretor
     const dataIncidente = parseISO(dto.dataIncidente);
     const limiteRetro   = subDays(new Date(), DATA_RETROATIVA_MAX_DIAS);
-    if (!dto.aprovacaoRetroativaDiretor && isAfter(limiteRetro, dataIncidente)) {
-      throw new BadRequestException('RN-11: Data retroativa > 90 dias exige aprovação do Diretor');
+    if (isAfter(limiteRetro, dataIncidente)) {
+      const podeFlagAprovar =
+        registrador.perfil === PerfilUsuario.DIRETOR ||
+        registrador.perfil === PerfilUsuario.ADMIN;
+      if (!dto.aprovacaoRetroativaDiretor || !podeFlagAprovar) {
+        if (dto.aprovacaoRetroativaDiretor && !podeFlagAprovar) {
+          throw new ForbiddenException('Apenas o Diretor pode aprovar registros com data retroativa superior a 90 dias.');
+        }
+        throw new BadRequestException('Data retroativa superior a 90 dias exige aprovação do Diretor.');
+      }
     }
 
     const aluno     = await this.alunosService.buscarPorId(dto.alunoId);
