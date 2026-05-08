@@ -36,8 +36,8 @@ next-env.d.ts
 Thumbs.db
 
 
-# Claude Code (configurações locais, não compartilhar)
-.claude/settings.local.json
+# Claude Code (workspace local, não compartilhar)
+.claude/
 
 # Documentos binários (manter no repositório os .md, não os .docx/.pdf)
 *.docx
