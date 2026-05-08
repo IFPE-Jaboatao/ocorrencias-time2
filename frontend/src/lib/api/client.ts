@@ -24,7 +24,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Em 401, tenta refresh via cookie sgoa_refresh; se falhar, redireciona para login
+// Em 401, tenta refresh via cookie sgoa_refresh; se falhar, redireciona para login.
+// Para todos os outros erros HTTP, substitui e.message pela mensagem do backend.
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -38,6 +39,15 @@ api.interceptors.response.use(
         if (typeof window !== 'undefined') window.location.href = '/login';
       }
     }
+
+    // Usa a mensagem do backend (ex: "RN-08: ...") em vez de "Request failed with status code 403"
+    const serverMessage = error.response?.data?.message;
+    if (serverMessage) {
+      error.message = Array.isArray(serverMessage)
+        ? serverMessage.join('; ')   // class-validator retorna array em 400
+        : serverMessage;
+    }
+
     return Promise.reject(error);
   },
 );
