@@ -59,15 +59,32 @@ const makeRepo = () => ({
 });
 
 const makeDataSource = () => {
-  let callCount = 0;
+  let seqBySegmento: Record<string, number> = {};
   const qr = {
-    connect:  jest.fn().mockResolvedValue(undefined),
-    query:    jest.fn().mockImplementation(() => {
-      callCount++;
-      // Par calls: INSERT (odd) → [], SELECT (even) → [{ seq: N }]
-      return Promise.resolve(callCount % 2 === 1 ? [] : [{ seq: Math.ceil(callCount / 2) }]);
+    connect:          jest.fn().mockResolvedValue(undefined),
+    startTransaction: jest.fn().mockResolvedValue(undefined),
+    commitTransaction: jest.fn().mockResolvedValue(undefined),
+    rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+    release:          jest.fn().mockResolvedValue(undefined),
+    // Simula SELECT ... FOR UPDATE: primeira chamada por segmento → [], demais → [{ ultimo_seq: N }]
+    query:            jest.fn().mockImplementation((sql: string, params?: any[]) => {
+      if (sql.includes('FOR UPDATE') && params) {
+        const seg = params[1] as string;
+        const cur = seqBySegmento[seg];
+        if (cur === undefined) return Promise.resolve([]);
+        return Promise.resolve([{ ultimo_seq: cur }]);
+      }
+      if (sql.includes('INSERT INTO codigo_sequencia') && params) {
+        const seg = params[1] as string;
+        seqBySegmento[seg] = 1;
+      }
+      if (sql.includes('UPDATE codigo_sequencia') && params) {
+        const newSeq = params[0] as number;
+        const seg    = params[2] as string;
+        seqBySegmento[seg] = newSeq;
+      }
+      return Promise.resolve([]);
     }),
-    release:  jest.fn().mockResolvedValue(undefined),
   };
   return {
     query:              jest.fn(),

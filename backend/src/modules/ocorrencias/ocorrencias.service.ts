@@ -254,9 +254,9 @@ export class OcorrenciasService {
   }
 
   // H-13: geração atômica do código único
-  // QueryRunner dedicado garante que UPDATE e SELECT usem a mesma conexão
-  // do pool — LAST_INSERT_ID() é per-connection no MySQL, dois query()
-  // separados podem usar conexões diferentes e retornar valor errado.
+  // Transação com SELECT ... FOR UPDATE garante exclusividade sem depender
+  // de LAST_INSERT_ID(), que é per-connection e pode retornar valor de
+  // operação anterior na mesma conexão do pool.
   async gerarCodigo(segmento: Segmento): Promise<string> {
     const prefixo: Record<Segmento, string> = {
       [Segmento.FUNDAMENTAL]: 'FM',
@@ -268,15 +268,31 @@ export class OcorrenciasService {
 
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
+    await qr.startTransaction();
     try {
-      await qr.query(
-        `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)
-         ON DUPLICATE KEY UPDATE ultimo_seq = LAST_INSERT_ID(ultimo_seq + 1)`,
+      const rows: { ultimo_seq: number }[] = await qr.query(
+        `SELECT ultimo_seq FROM codigo_sequencia WHERE ano = ? AND segmento = ? FOR UPDATE`,
         [ano, sig],
       );
-      const [{ seq }] = await qr.query(`SELECT LAST_INSERT_ID() AS seq`);
-      const ultimoSeq = Number(seq) === 0 ? 1 : Number(seq);
-      return `OC-${ano}-${String(ultimoSeq).padStart(5, '0')}-${sig}`;
+      let newSeq: number;
+      if (rows.length === 0) {
+        newSeq = 1;
+        await qr.query(
+          `INSERT INTO codigo_sequencia (ano, segmento, ultimo_seq) VALUES (?, ?, 1)`,
+          [ano, sig],
+        );
+      } else {
+        newSeq = Number(rows[0].ultimo_seq) + 1;
+        await qr.query(
+          `UPDATE codigo_sequencia SET ultimo_seq = ? WHERE ano = ? AND segmento = ?`,
+          [newSeq, ano, sig],
+        );
+      }
+      await qr.commitTransaction();
+      return `OC-${ano}-${String(newSeq).padStart(5, '0')}-${sig}`;
+    } catch (err) {
+      await qr.rollbackTransaction();
+      throw err;
     } finally {
       await qr.release();
     }
