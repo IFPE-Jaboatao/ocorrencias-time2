@@ -205,9 +205,9 @@ async function seed() {
       const id = crypto.randomUUID();
       alunoIds[a.matricula] = id;
       await q.query(
-        `INSERT IGNORE INTO alunos (id, matricula, nome, data_nascimento, cpf_encriptado, segmento, campus, curso, turma, turma_id, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO')`,
-        [id, a.matricula, a.nome, a.data_nascimento, a.cpf_enc, a.segmento, a.campus, a.curso, a.turma, turmaIds[a.turma]],
+        `INSERT IGNORE INTO alunos (id, matricula, nome, data_nascimento, cpf_encriptado, segmento, campus, curso, turma, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO')`,
+        [id, a.matricula, a.nome, a.data_nascimento, a.cpf_enc, a.segmento, a.campus, a.curso, a.turma],
       );
     }
 
@@ -269,8 +269,8 @@ async function seed() {
     // Formato código: OC-YYYY-NNNNN-SEG
     for (const turmaId of Object.values(turmaIds)) {
       await q.query(
-        `INSERT IGNORE INTO usuario_turmas (usuario_id, turma_id, papel, ativo)
-         VALUES (?, ?, 'PROFESSOR', 1)`,
+        `INSERT IGNORE INTO usuario_turmas (usuario_id, turma_id, ativo)
+         VALUES (?, ?, 1)`,
         [profId, turmaId],
       );
     }
