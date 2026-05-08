@@ -195,10 +195,35 @@ describe('Ocorrências — E2E', () => {
       ocorrenciaId = res.body.id;
     });
 
-    it('200 — buscar por ID válido', async () => {
+    it('200 — professor visualiza ocorrência que ele mesmo registrou', async () => {
       const res = await request(app.getHttpServer())
         .get(`/api/v1/ocorrencias/${ocorrenciaId}`)
         .set('Authorization', `Bearer ${tokenProfessor}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(ocorrenciaId);
+    });
+
+    it('200 — coordenador do mesmo campus visualiza ocorrência', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/${ocorrenciaId}`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(ocorrenciaId);
+    });
+
+    it('C-02 — coordenador de outro campus NÃO pode visualizar a ocorrência → 403', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/${ocorrenciaId}`)
+        .set('Authorization', `Bearer ${tokenCoordenadorB}`)
+        .expect(403);
+    });
+
+    it('200 — diretor pode visualizar ocorrência de qualquer campus', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/${ocorrenciaId}`)
+        .set('Authorization', `Bearer ${tokenDiretor}`)
         .expect(200);
 
       expect(res.body.id).toBe(ocorrenciaId);
@@ -209,6 +234,12 @@ describe('Ocorrências — E2E', () => {
         .get('/api/v1/ocorrencias/00000000-0000-0000-0000-000000000000')
         .set('Authorization', `Bearer ${tokenCoordenador}`)
         .expect(404);
+    });
+
+    it('401 sem token', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/${ocorrenciaId}`)
+        .expect(401);
     });
   });
 
@@ -255,6 +286,131 @@ describe('Ocorrências — E2E', () => {
         .set('Authorization', `Bearer ${tokenCoordenador}`)
         .send({ status: 'ABERTA' })
         .expect(400);
+    });
+
+    it('RN-12 — ocorrência ARQUIVADA é read-only → 403', async () => {
+      // Criar e arquivar uma ocorrência (ABERTA → EM_ACOMPANHAMENTO → RESOLVIDA → ARQUIVADA)
+      const dto = {
+        alunoId: seeds.alunoMaior.id, categoriaId: seeds.categoria.id,
+        severidade: 1, dataIncidente: '2026-04-23',
+        local: 'Secretaria', descricao: 'Ocorrência para testar arquivamento e read-only.',
+      };
+      const criado = await request(app.getHttpServer())
+        .post('/api/v1/ocorrencias').set('Authorization', `Bearer ${tokenCoordenador}`).send(dto).expect(201);
+      const id = criado.body.id;
+
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Iniciando acompanhamento.' }).expect(200);
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'RESOLVIDA', justificativa: 'Resolvido.' }).expect(200);
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .send({ status: 'ARQUIVADA' }).expect(200);
+
+      // Tentativa de alterar ocorrência arquivada → 403
+      await request(app.getHttpServer())
+        .patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Tentativa de reabrir arquivada.' })
+        .expect(403);
+    });
+
+    it('RN-04 — coordenador NÃO pode reabrir ocorrência RESOLVIDA → 403', async () => {
+      const dto = {
+        alunoId: seeds.alunoMaior.id, categoriaId: seeds.categoria.id,
+        severidade: 1, dataIncidente: '2026-04-24',
+        local: 'Laboratório', descricao: 'Ocorrência para testar restrição de reabertura pelo coordenador.',
+      };
+      const criado = await request(app.getHttpServer())
+        .post('/api/v1/ocorrencias').set('Authorization', `Bearer ${tokenCoordenador}`).send(dto).expect(201);
+      const id = criado.body.id;
+
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Acompanhamento iniciado.' }).expect(200);
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'RESOLVIDA' }).expect(200);
+
+      // Coordenador tenta reabrir → 403
+      await request(app.getHttpServer())
+        .patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Coordenador tentando reabrir.' })
+        .expect(403);
+    });
+
+    it('RN-04 — admin PODE reabrir ocorrência RESOLVIDA com justificativa → 200', async () => {
+      const dto = {
+        alunoId: seeds.alunoMaior.id, categoriaId: seeds.categoria.id,
+        severidade: 1, dataIncidente: '2026-04-25',
+        local: 'Refeitório', descricao: 'Ocorrência para testar reabertura autorizada pelo admin.',
+      };
+      const criado = await request(app.getHttpServer())
+        .post('/api/v1/ocorrencias').set('Authorization', `Bearer ${tokenCoordenador}`).send(dto).expect(201);
+      const id = criado.body.id;
+
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Iniciando.' }).expect(200);
+      await request(app.getHttpServer()).patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .send({ status: 'RESOLVIDA' }).expect(200);
+
+      // Admin reabre com justificativa → 200
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/ocorrencias/${id}/status`)
+        .set('Authorization', `Bearer ${tokenAdmin}`)
+        .send({ status: 'EM_ACOMPANHAMENTO', justificativa: 'Reabertura autorizada pelo administrador para revisão.' })
+        .expect(200);
+
+      expect(res.body.status).toBe('EM_ACOMPANHAMENTO');
+    });
+  });
+
+  // ─── GET /ocorrencias/alunos/:alunoId/reincidencias ─────────────────────────
+
+  describe('GET /api/v1/ocorrencias/alunos/:alunoId/reincidencias', () => {
+    it('200 — coordenador do mesmo campus pode verificar reincidências', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/alunos/${seeds.alunoMenor.id}/reincidencias`)
+        .set('Authorization', `Bearer ${tokenCoordenador}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('totalNoPeriodo');
+      expect(res.body).toHaveProperty('reincidente');
+      expect(res.body).toHaveProperty('categorias');
+    });
+
+    it('200 — diretor pode verificar reincidências de qualquer campus', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/alunos/${seeds.alunoMenor.id}/reincidencias`)
+        .set('Authorization', `Bearer ${tokenDiretor}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('totalNoPeriodo');
+    });
+
+    it('403 — professor não tem perfil para acessar reincidências (guard @Roles)', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/alunos/${seeds.alunoMenor.id}/reincidencias`)
+        .set('Authorization', `Bearer ${tokenProfessor}`)
+        .expect(403);
+    });
+
+    it('C-01 — coordenador de outro campus NÃO pode verificar reincidências → 403', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/alunos/${seeds.alunoMenor.id}/reincidencias`)
+        .set('Authorization', `Bearer ${tokenCoordenadorB}`)
+        .expect(403);
+    });
+
+    it('401 sem token', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/v1/ocorrencias/alunos/${seeds.alunoMenor.id}/reincidencias`)
+        .expect(401);
     });
   });
 });

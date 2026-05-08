@@ -1,6 +1,6 @@
 import { Test, TestingModule }   from '@nestjs/testing';
 import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 }          from '@nestjs/event-emitter';
 import { subDays, addDays }       from 'date-fns';
 import { OcorrenciasService }     from './ocorrencias.service';
@@ -24,7 +24,7 @@ const makeUser = (o: Partial<AuthenticatedUser> = {}): AuthenticatedUser => ({
 
 const makeAluno = (o: any = {}) => ({
   id: 'aluno-1', status: 'ATIVO', campus: 'Campus A',
-  segmento: Segmento.FUNDAMENTAL, turmaId: 'turma-1', dataNascimento: new Date('2010-01-01'),
+  segmento: Segmento.FUNDAMENTAL, turma: 'Turma 8A', dataNascimento: new Date('2010-01-01'),
   ...o,
 });
 
@@ -69,7 +69,7 @@ const makeDataSource = () => ({
 describe('OcorrenciasService', () => {
   let service: OcorrenciasService;
   let repo: ReturnType<typeof makeRepo>;
-  let usuarioTurmaRepo: { exists: jest.Mock };
+  let usuarioTurmaRepo: { find: jest.Mock };
   let dataSource: ReturnType<typeof makeDataSource>;
   let alunosService: { buscarPorId: jest.Mock };
   let categoriasService: { buscarPorId: jest.Mock };
@@ -78,7 +78,12 @@ describe('OcorrenciasService', () => {
 
   beforeEach(async () => {
     repo             = makeRepo();
-    usuarioTurmaRepo = { exists: jest.fn().mockResolvedValue(true) };
+    usuarioTurmaRepo = {
+      find: jest.fn().mockResolvedValue([
+        // turma que coincide com makeAluno() — campus A, nome "Turma 8A"
+        { turma: { nome: 'Turma 8A', campus: 'Campus A' } },
+      ]),
+    };
     dataSource       = makeDataSource();
     alunosService    = { buscarPorId: jest.fn().mockResolvedValue(makeAluno()) };
     categoriasService= { buscarPorId: jest.fn().mockResolvedValue(makeCategoria()) };
@@ -90,6 +95,7 @@ describe('OcorrenciasService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getCount: jest.fn().mockResolvedValue(0),
+      getMany: jest.fn().mockResolvedValue([]),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -141,14 +147,16 @@ describe('OcorrenciasService', () => {
     });
 
     it('RN-07: professor não pode registrar ocorrência de aluno de outro campus', async () => {
-      alunosService.buscarPorId.mockResolvedValue(makeAluno({ turmaId: null }));
+      // aluno é de Campus B; turmas do professor são em Campus A → sem match
+      alunosService.buscarPorId.mockResolvedValue(makeAluno({ campus: 'Campus B' }));
       const professor = makeUser({ perfil: PerfilUsuario.PROFESSOR, campus: 'Campus A' });
       await expect(service.criar(makeCreateDto(), professor))
         .rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('RN-07: professor nao pode registrar ocorrencia de aluno de turma nao vinculada', async () => {
-      usuarioTurmaRepo.exists.mockResolvedValue(false);
+      // professor sem turmas vinculadas → find retorna []
+      usuarioTurmaRepo.find.mockResolvedValueOnce([]);
       const professor = makeUser({ perfil: PerfilUsuario.PROFESSOR, campus: 'Campus A' });
       await expect(service.criar(makeCreateDto(), professor))
         .rejects.toBeInstanceOf(ForbiddenException);
@@ -340,6 +348,179 @@ describe('OcorrenciasService', () => {
       const aluno = makeUser({ perfil: PerfilUsuario.ALUNO });
       await expect(service.listar({ page: 1, pageSize: 20 } as any, aluno))
         .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Secretaria: filtra por campus do usuário', async () => {
+      const secretaria = makeUser({ perfil: PerfilUsuario.SECRETARIA, campus: 'Campus A' });
+      await service.listar({ page: 1, pageSize: 20 } as any, secretaria);
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'aluno.campus = :campus', { campus: 'Campus A' },
+      );
+    });
+
+    it('EquipePedagogica: filtra por campus do usuário', async () => {
+      const eq = makeUser({ perfil: PerfilUsuario.EQUIPE_PEDAGOGICA, campus: 'Campus A' });
+      await service.listar({ page: 1, pageSize: 20 } as any, eq);
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'aluno.campus = :campus', { campus: 'Campus A' },
+      );
+    });
+
+    it('Diretor: não aplica filtro de escopo (visão global)', async () => {
+      const diretor = makeUser({ perfil: PerfilUsuario.DIRETOR });
+      await service.listar({ page: 1, pageSize: 20 } as any, diretor);
+      const calls = qb.andWhere.mock.calls.map((c: any[]) => c[0]);
+      expect(calls).not.toContain('oc.registradorId = :uid');
+      expect(calls).not.toContain('aluno.campus = :campus');
+    });
+  });
+
+  // ─── buscarPorId (scoping H-08 / C-02) ─────────────────────────────────
+
+  describe('buscarPorId() — scoping H-08 / C-02', () => {
+    it('Professor: pode visualizar ocorrência que ele mesmo registrou', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ registradorId: 'u-1', aluno: makeAluno() }));
+      const prof = makeUser({ sub: 'u-1', perfil: PerfilUsuario.PROFESSOR });
+      const result = await service.buscarPorId('oc-1', prof);
+      expect(result.id).toBe('oc-1');
+    });
+
+    it('Professor: não pode visualizar ocorrência de outro registrador', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ registradorId: 'outro-uid', aluno: makeAluno() }));
+      const prof = makeUser({ sub: 'u-1', perfil: PerfilUsuario.PROFESSOR });
+      await expect(service.buscarPorId('oc-1', prof))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Coordenador: pode visualizar ocorrência do mesmo campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus A' }) }));
+      const coord = makeUser({ perfil: PerfilUsuario.COORDENADOR, campus: 'Campus A' });
+      const result = await service.buscarPorId('oc-1', coord);
+      expect(result.id).toBe('oc-1');
+    });
+
+    it('Coordenador: não pode visualizar ocorrência de aluno de outro campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus B' }) }));
+      const coord = makeUser({ perfil: PerfilUsuario.COORDENADOR, campus: 'Campus A' });
+      await expect(service.buscarPorId('oc-1', coord))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('EquipePedagogica: não pode visualizar ocorrência de aluno de outro campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus B' }) }));
+      const eq = makeUser({ perfil: PerfilUsuario.EQUIPE_PEDAGOGICA, campus: 'Campus A' });
+      await expect(service.buscarPorId('oc-1', eq))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Secretaria: não pode visualizar ocorrência de aluno de outro campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus B' }) }));
+      const sec = makeUser({ perfil: PerfilUsuario.SECRETARIA, campus: 'Campus A' });
+      await expect(service.buscarPorId('oc-1', sec))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Diretor: pode visualizar ocorrência de qualquer campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus Z' }) }));
+      const dir = makeUser({ perfil: PerfilUsuario.DIRETOR });
+      const result = await service.buscarPorId('oc-1', dir);
+      expect(result.id).toBe('oc-1');
+    });
+
+    it('Admin: pode visualizar ocorrência de qualquer campus', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno({ campus: 'Campus Z' }) }));
+      const admin = makeUser({ perfil: PerfilUsuario.ADMIN });
+      const result = await service.buscarPorId('oc-1', admin);
+      expect(result.id).toBe('oc-1');
+    });
+
+    it('Perfil inválido (ALUNO): lança ForbiddenException', async () => {
+      repo.findOne.mockResolvedValue(makeOcorrencia({ aluno: makeAluno() }));
+      const aluno = makeUser({ perfil: PerfilUsuario.ALUNO });
+      await expect(service.buscarPorId('oc-1', aluno))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('deve lançar NotFoundException quando ocorrência não existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const admin = makeUser({ perfil: PerfilUsuario.ADMIN });
+      await expect(service.buscarPorId('nao-existe', admin))
+        .rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  // ─── alterarStatus — RN-04 (reabrir RESOLVIDA) ─────────────────────────
+
+  describe('alterarStatus() — RN-04 reabrir RESOLVIDA', () => {
+    it('RN-04: Coordenador não pode reabrir ocorrência RESOLVIDA', async () => {
+      repo.findOneOrFail.mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.RESOLVIDA }));
+      const coord = makeUser({ perfil: PerfilUsuario.COORDENADOR });
+      await expect(
+        service.alterarStatus('oc-1', StatusOcorrencia.EM_ACOMPANHAMENTO, coord, 'Justificativa longa suficiente.'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('RN-04: Diretor não pode reabrir ocorrência RESOLVIDA (apenas ADMIN)', async () => {
+      repo.findOneOrFail.mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.RESOLVIDA }));
+      const dir = makeUser({ perfil: PerfilUsuario.DIRETOR });
+      await expect(
+        service.alterarStatus('oc-1', StatusOcorrencia.EM_ACOMPANHAMENTO, dir, 'Justificativa longa suficiente.'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('RN-04: Admin pode reabrir ocorrência RESOLVIDA com justificativa', async () => {
+      const oc = makeOcorrencia({ status: StatusOcorrencia.RESOLVIDA });
+      repo.findOneOrFail.mockResolvedValue(oc);
+      repo.save.mockImplementation((x) => Promise.resolve(x));
+      const admin = makeUser({ perfil: PerfilUsuario.ADMIN });
+      await expect(
+        service.alterarStatus('oc-1', StatusOcorrencia.EM_ACOMPANHAMENTO, admin, 'Reabertura autorizada pelo Admin.'),
+      ).resolves.toBeDefined();
+    });
+
+    it('RN-04: Admin sem justificativa não pode reabrir ocorrência RESOLVIDA', async () => {
+      repo.findOneOrFail.mockResolvedValue(makeOcorrencia({ status: StatusOcorrencia.RESOLVIDA }));
+      const admin = makeUser({ perfil: PerfilUsuario.ADMIN });
+      await expect(
+        service.alterarStatus('oc-1', StatusOcorrencia.EM_ACOMPANHAMENTO, admin),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  // ─── verificarReincidencias (C-01 campus scoping) ───────────────────────
+
+  describe('verificarReincidencias() — scoping C-01', () => {
+    beforeEach(() => {
+      alunosService.buscarPorId.mockResolvedValue(makeAluno({ campus: 'Campus A' }));
+      const qb = repo.createQueryBuilder();
+      qb.getMany.mockResolvedValue([]);
+    });
+
+    it('Coordenador mesmo campus: pode verificar reincidências do aluno', async () => {
+      const coord = makeUser({ perfil: PerfilUsuario.COORDENADOR, campus: 'Campus A' });
+      await expect(service.verificarReincidencias('aluno-1', coord)).resolves.toBeDefined();
+    });
+
+    it('Coordenador outro campus: lança ForbiddenException', async () => {
+      const coord = makeUser({ perfil: PerfilUsuario.COORDENADOR, campus: 'Campus B' });
+      await expect(service.verificarReincidencias('aluno-1', coord))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('EquipePedagogica outro campus: lança ForbiddenException', async () => {
+      const eq = makeUser({ perfil: PerfilUsuario.EQUIPE_PEDAGOGICA, campus: 'Campus B' });
+      await expect(service.verificarReincidencias('aluno-1', eq))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Admin: pode verificar reincidências de qualquer campus', async () => {
+      const admin = makeUser({ perfil: PerfilUsuario.ADMIN });
+      await expect(service.verificarReincidencias('aluno-1', admin)).resolves.toBeDefined();
+    });
+
+    it('Diretor: pode verificar reincidências de qualquer campus', async () => {
+      const dir = makeUser({ perfil: PerfilUsuario.DIRETOR });
+      await expect(service.verificarReincidencias('aluno-1', dir)).resolves.toBeDefined();
     });
   });
 });
