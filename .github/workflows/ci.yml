@@ -25,7 +25,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-          --log_bin_trust_function_creators=1
         ports:
           - 3307:3306
 
@@ -35,6 +34,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Habilitar log_bin_trust_function_creators (necessário para triggers — H-18)
+        run: |
+          mysql -h 127.0.0.1 -P 3307 -u root -proot \
+            -e "SET GLOBAL log_bin_trust_function_creators = 1;"
 
       - uses: actions/setup-node@v4
         with:
