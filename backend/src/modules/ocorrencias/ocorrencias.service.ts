@@ -77,7 +77,7 @@ export class OcorrenciasService {
         ut.turma.nome === aluno.turma && ut.turma.campus === aluno.campus,
       );
       if (!podeRegistrar) {
-        throw new ForbiddenException('RN-07: Professor só pode registrar ocorrências de alunos das suas turmas');
+        throw new ForbiddenException('Você só pode registrar ocorrências de alunos das suas turmas.');
       }
     }
 
@@ -137,7 +137,7 @@ export class OcorrenciasService {
       case PerfilUsuario.ADMIN:
         break;
       default:
-        throw new ForbiddenException('Perfil sem acesso a listagem de ocorrências');
+        throw new ForbiddenException('Você não possui autorização para listar ocorrências.');
     }
 
     if (filtros.status)        qb.andWhere('oc.status = :status',             { status:      filtros.status });
@@ -168,21 +168,21 @@ export class OcorrenciasService {
     switch (usuario.perfil) {
       case PerfilUsuario.PROFESSOR:
         if (oc.registradorId !== usuario.sub) {
-          throw new ForbiddenException('Acesso negado a esta ocorrência');
+          throw new ForbiddenException('Você não possui autorização para visualizar esta ocorrência.');
         }
         break;
       case PerfilUsuario.COORDENADOR:
       case PerfilUsuario.EQUIPE_PEDAGOGICA:
       case PerfilUsuario.SECRETARIA:
         if (oc.aluno?.campus !== usuario.campus) {
-          throw new ForbiddenException('Acesso negado: ocorrência de outro campus');
+          throw new ForbiddenException('Esta ocorrência pertence a outro campus e não pode ser acessada pelo seu perfil.');
         }
         break;
       case PerfilUsuario.DIRETOR:
       case PerfilUsuario.ADMIN:
         break; // visão global
       default:
-        throw new ForbiddenException('Perfil sem acesso a ocorrências');
+        throw new ForbiddenException('Você não possui autorização para acessar ocorrências.');
     }
     return oc;
   }
@@ -197,7 +197,7 @@ export class OcorrenciasService {
 
     // RN-12: arquivada é read-only
     if (oc.status === StatusOcorrencia.ARQUIVADA) {
-      throw new ForbiddenException('RN-12: Ocorrência arquivada não pode ser alterada');
+      throw new ForbiddenException('Ocorrência arquivada não pode ser alterada.');
     }
 
     validarTransicao(oc.status, novoStatus);
@@ -205,7 +205,7 @@ export class OcorrenciasService {
     // RN-04: reabrir ocorrência RESOLVIDA exige perfil ADMIN + justificativa
     if (oc.status === StatusOcorrencia.RESOLVIDA && novoStatus === StatusOcorrencia.EM_ACOMPANHAMENTO) {
       if (usuario.perfil !== PerfilUsuario.ADMIN) {
-        throw new ForbiddenException('RN-04: Apenas Admin pode reabrir ocorrência resolvida');
+        throw new ForbiddenException('Apenas o Administrador pode reabrir uma ocorrência já resolvida.');
       }
       if (!justificativa?.trim()) {
         throw new BadRequestException('RN-04: Justificativa obrigatória para reabrir ocorrência resolvida');
@@ -230,7 +230,7 @@ export class OcorrenciasService {
     const oc = await this.repo.findOneOrFail({ where: { id } });
 
     if (oc.status === StatusOcorrencia.ARQUIVADA) {
-      throw new ForbiddenException('RN-12: Ocorrência arquivada não pode ser alterada');
+      throw new ForbiddenException('Ocorrência arquivada não pode ser alterada.');
     }
 
     const severidadeAnterior = oc.severidade;
@@ -291,7 +291,7 @@ export class OcorrenciasService {
       [PerfilUsuario.COORDENADOR, PerfilUsuario.EQUIPE_PEDAGOGICA, PerfilUsuario.SECRETARIA].includes(usuario.perfil) &&
       aluno.campus !== usuario.campus
     ) {
-      throw new ForbiddenException('Acesso negado: aluno de outro campus');
+      throw new ForbiddenException('Este aluno pertence a outro campus e não pode ser acessado pelo seu perfil.');
     }
 
     const desde = subDays(new Date(), REINCIDENCIA_JANELA_DIAS);

@@ -81,7 +81,7 @@ export class EvidenciasService {
 
     if (!podeRemover) {
       throw new ForbiddenException(
-        'Apenas o uploader ou perfis COORDENADOR/DIRETOR/ADMIN podem remover evidências',
+        'Você não possui autorização para remover esta evidência.',
       );
     }
 

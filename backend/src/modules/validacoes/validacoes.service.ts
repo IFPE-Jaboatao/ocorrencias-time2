@@ -22,17 +22,17 @@ export class ValidacoesService {
     const oc = await this.ocorrenciasService.buscarPorId(ocorrenciaId, validador);
 
     if (oc.status !== StatusOcorrencia.AGUARDANDO_VALIDACAO) {
-      throw new ForbiddenException('Ocorrência não está aguardando validação');
+      throw new ForbiddenException('Esta ocorrência não está aguardando validação.');
     }
 
     // RN-08: coordenador não valida a própria ocorrência
     if (oc.registradorId === validador.sub) {
-      throw new ForbiddenException('RN-08: Você não pode validar uma ocorrência que você mesmo registrou');
+      throw new ForbiddenException('Você não pode validar uma ocorrência que você mesmo registrou.');
     }
 
     // Sev >= 5 exige diretor
     if (oc.severidade >= 5 && validador.perfil !== PerfilUsuario.DIRETOR && validador.perfil !== PerfilUsuario.ADMIN) {
-      throw new ForbiddenException('Ocorrências gravíssimas (Sev. 5) exigem validação do Diretor');
+      throw new ForbiddenException('Ocorrências de severidade 5 (Gravíssima) precisam ser validadas pelo Diretor.');
     }
 
     const decisaoParaStatus: Record<TipoDecisao, StatusOcorrencia> = {

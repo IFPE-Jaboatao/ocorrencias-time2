@@ -20,7 +20,7 @@ export class RolesGuard implements CanActivate {
     if (!user) throw new ForbiddenException('Usuário não autenticado');
     if (!required.includes(user.perfil)) {
       throw new ForbiddenException(
-        `Perfil '${user.perfil}' não tem permissão para este recurso.`,
+        'Você não possui autorização para realizar esta ação.',
       );
     }
     return true;
