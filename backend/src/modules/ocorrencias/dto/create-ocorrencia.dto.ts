@@ -13,6 +13,10 @@ export class CreateOcorrenciaDto {
   @IsUUID()
   categoriaId: string;
 
+  @ApiPropertyOptional({ description: 'UUID da subcategoria selecionada' })
+  @IsOptional() @IsUUID()
+  subcategoriaId?: string;
+
   @ApiPropertyOptional({ example: 'Bullying' })
   @IsOptional() @IsString() @MaxLength(255)
   subcategoria?: string;
