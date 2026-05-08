@@ -1,19 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { createTestApp } from './helpers/create-test-app';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+  beforeAll(async () => {
+    app = await createTestApp();
   });
 
   it('/ (GET) deve retornar 404 porque a API publica vive em /api/v1', () => {
@@ -22,7 +15,7 @@ describe('AppController (e2e)', () => {
       .expect(404);
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 });
