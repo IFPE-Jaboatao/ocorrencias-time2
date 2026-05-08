@@ -7,6 +7,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/v1/auth/dev-login',
   '/api/v1/auth/csrf-token',
   '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',  // clears cookies only — CSRF risk is negligible
 ];
 
 const MUTATING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
