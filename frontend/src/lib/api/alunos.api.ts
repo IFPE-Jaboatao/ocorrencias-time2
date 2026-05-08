@@ -11,6 +11,9 @@ export interface FilterAluno {
 }
 
 export const alunosApi = {
+  getOpcoes: () =>
+    api.get<{ campi: string[]; cursos: string[] }>('/alunos/opcoes').then(r => r.data),
+
   buscar: (q = '') =>
     api.get<Aluno[]>('/alunos/buscar', { params: { q } }).then(r => r.data),
 

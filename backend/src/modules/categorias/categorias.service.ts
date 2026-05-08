@@ -5,6 +5,7 @@ import { CategoriaOcorrencia }           from './entities/categoria-ocorrencia.e
 import { SubcategoriaOcorrencia }        from './entities/subcategoria-ocorrencia.entity';
 import { CreateCategoriaDto }            from './dto/create-categoria.dto';
 import { CreateSubcategoriaDto }         from './dto/create-subcategoria.dto';
+import { UpdateSubcategoriaDto }         from './dto/update-subcategoria.dto';
 
 @Injectable()
 export class CategoriasService {
@@ -52,6 +53,18 @@ export class CategoriasService {
     const sub = await this.subRepo.findOne({ where: { id, ativo: true } });
     if (!sub) throw new NotFoundException('Subcategoria não encontrada');
     return sub;
+  }
+
+  async atualizarSubcategoria(
+    categoriaId: string,
+    subcategoriaId: string,
+    dto: UpdateSubcategoriaDto,
+  ): Promise<SubcategoriaOcorrencia> {
+    await this.buscarPorId(categoriaId);
+    const sub = await this.subRepo.findOne({ where: { id: subcategoriaId, categoriaId } });
+    if (!sub) throw new NotFoundException('Subcategoria não encontrada');
+    await this.subRepo.update(subcategoriaId, dto);
+    return this.subRepo.findOneOrFail({ where: { id: subcategoriaId } });
   }
 
   async desativarSubcategoria(categoriaId: string, subcategoriaId: string): Promise<void> {

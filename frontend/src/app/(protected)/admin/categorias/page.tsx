@@ -12,7 +12,7 @@ import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import type { Segmento } from '@/types/ocorrencia.types';
 import {
   Tag, Plus, X, Check, AlertCircle, Trash2,
-  Clock, Bell, Shield, BookOpen, ChevronRight, ChevronDown,
+  Clock, Bell, Shield, BookOpen, ChevronRight, ChevronDown, Pencil,
 } from 'lucide-react';
 
 const SEGMENTOS: Segmento[] = ['FUNDAMENTAL', 'MEDIO', 'SUPERIOR'];
@@ -58,6 +58,13 @@ interface SubFormState {
   error: string;
 }
 
+interface EditSubState {
+  catId: string;
+  subId: string;
+  form: Partial<CreateSubcategoriaPayload>;
+  error: string;
+}
+
 export default function CategoriasAdminPage() {
   const user = useCurrentUser();
   const qc   = useQueryClient();
@@ -75,6 +82,7 @@ export default function CategoriasAdminPage() {
   const [confirmDelSub, setConfirmDelSub] = useState<{ catId: string; subId: string } | null>(null);
   const [expanded, setExpanded]     = useState<string | null>(null);
   const [subFormState, setSubFormState] = useState<SubFormState | null>(null);
+  const [editSubState, setEditSubState] = useState<EditSubState | null>(null);
 
   const isAdmin = user?.perfil === 'ADMIN';
 
@@ -112,6 +120,20 @@ export default function CategoriasAdminPage() {
     mutationFn: ({ catId, subId }: { catId: string; subId: string }) =>
       categoriasApi.desativarSubcategoria(catId, subId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['categorias'] }); setConfirmDelSub(null); },
+  });
+
+  const atualizarSubMut = useMutation({
+    mutationFn: ({ catId, subId, payload }: { catId: string; subId: string; payload: Partial<CreateSubcategoriaPayload> }) =>
+      categoriasApi.atualizarSubcategoria(catId, subId, payload),
+    onSuccess: (sub) => {
+      qc.invalidateQueries({ queryKey: ['categorias'] });
+      setEditSubState(null);
+      setSuccess(`Subcategoria "${sub.nome}" atualizada.`);
+      setTimeout(() => setSuccess(''), 3000);
+    },
+    onError: (e: unknown) => {
+      setEditSubState(s => s ? { ...s, error: e instanceof Error ? e.message : 'Erro ao atualizar subcategoria.' } : s);
+    },
   });
 
   function toggleSegmento(seg: Segmento) {
@@ -436,6 +458,100 @@ export default function CategoriasAdminPage() {
                       <div className="space-y-2">
                         {subcats.map((sub: Subcategoria) => {
                           const isDeletingSub = confirmDelSub?.catId === cat.id && confirmDelSub.subId === sub.id;
+                          const isEditingSub  = editSubState?.catId === cat.id && editSubState.subId === sub.id;
+
+                          if (isEditingSub && editSubState) {
+                            return (
+                              <div key={sub.id} className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 space-y-3">
+                                <p className="text-xs font-semibold text-amber-700">Editar subcategoria</p>
+
+                                <input
+                                  type="text"
+                                  placeholder="Nome da subcategoria"
+                                  value={editSubState.form.nome ?? ''}
+                                  onChange={e => setEditSubState(s => s ? { ...s, form: { ...s.form, nome: e.target.value } } : s)}
+                                  className="w-full rounded-xl border border-amber-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                                  autoFocus
+                                />
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs text-amber-600 font-medium mb-1">Severidade padrão</label>
+                                    <div className="flex gap-1">
+                                      {[1, 2, 3, 4, 5].map(n => (
+                                        <button
+                                          key={n}
+                                          type="button"
+                                          onClick={() => setEditSubState(s => s ? { ...s, form: { ...s.form, severidadePadrao: n } } : s)}
+                                          className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 border text-xs font-medium transition-all ${
+                                            editSubState.form.severidadePadrao === n
+                                              ? 'border-amber-500 bg-amber-100 text-amber-700'
+                                              : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-50'
+                                          }`}
+                                          title={SEV_LABELS[n]}
+                                        >
+                                          <SeveridadeDot n={n} />
+                                          {n}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-amber-600 font-medium mb-1">SLA</label>
+                                    <select
+                                      value={editSubState.form.slaHoras ?? 72}
+                                      onChange={e => setEditSubState(s => s ? { ...s, form: { ...s.form, slaHoras: Number(e.target.value) } } : s)}
+                                      className="w-full rounded-xl border border-amber-200 bg-white px-2 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    >
+                                      {SLA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-4">
+                                  {[
+                                    { key: 'exigeValidacao',       label: 'Exige validação' },
+                                    { key: 'exigeNotifResponsavel', label: 'Notif. responsável' },
+                                    { key: 'obrigatorioLegal',      label: 'Obrigatório legal' },
+                                  ].map(({ key, label }) => (
+                                    <label key={key} className="flex items-center gap-2 cursor-pointer text-xs text-gray-600">
+                                      <input
+                                        type="checkbox"
+                                        checked={!!editSubState.form[key as keyof typeof editSubState.form]}
+                                        onChange={e => setEditSubState(s => s ? { ...s, form: { ...s.form, [key]: e.target.checked } } : s)}
+                                        className="rounded"
+                                      />
+                                      {label}
+                                    </label>
+                                  ))}
+                                </div>
+
+                                {editSubState.error && (
+                                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 rounded-lg p-2">
+                                    <AlertCircle size={13} />
+                                    {editSubState.error}
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => atualizarSubMut.mutate({ catId: cat.id, subId: sub.id, payload: editSubState.form })}
+                                    disabled={atualizarSubMut.isPending || !editSubState.form.nome?.trim()}
+                                    className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    {atualizarSubMut.isPending ? 'Salvando...' : 'Salvar alterações'}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditSubState(null)}
+                                    className="rounded-xl border border-gray-200 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div key={sub.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 gap-3">
                               <div className="flex items-center gap-3 min-w-0">
@@ -477,13 +593,37 @@ export default function CategoriasAdminPage() {
                                       </button>
                                     </span>
                                   ) : (
-                                    <button
-                                      onClick={() => setConfirmDelSub({ catId: cat.id, subId: sub.id })}
-                                      className="text-gray-300 hover:text-red-500 transition-colors"
-                                      title="Desativar subcategoria"
-                                    >
-                                      <X size={13} />
-                                    </button>
+                                    <span className="flex items-center gap-1.5">
+                                      <button
+                                        onClick={() => {
+                                          setSubFormState(null);
+                                          setEditSubState({
+                                            catId: cat.id,
+                                            subId: sub.id,
+                                            form: {
+                                              nome:                  sub.nome,
+                                              severidadePadrao:      sub.severidadePadrao,
+                                              slaHoras:              sub.slaHoras,
+                                              exigeValidacao:        sub.exigeValidacao,
+                                              exigeNotifResponsavel: sub.exigeNotifResponsavel,
+                                              obrigatorioLegal:      sub.obrigatorioLegal,
+                                            },
+                                            error: '',
+                                          });
+                                        }}
+                                        className="text-gray-300 hover:text-amber-500 transition-colors"
+                                        title="Editar subcategoria"
+                                      >
+                                        <Pencil size={13} />
+                                      </button>
+                                      <button
+                                        onClick={() => setConfirmDelSub({ catId: cat.id, subId: sub.id })}
+                                        className="text-gray-300 hover:text-red-500 transition-colors"
+                                        title="Desativar subcategoria"
+                                      >
+                                        <X size={13} />
+                                      </button>
+                                    </span>
                                   )
                                 )}
                               </div>

@@ -63,6 +63,9 @@ export const categoriasApi = {
   criarSubcategoria: (categoriaId: string, payload: CreateSubcategoriaPayload): Promise<Subcategoria> =>
     api.post(`/categorias/${categoriaId}/subcategorias`, payload).then(r => r.data),
 
+  atualizarSubcategoria: (categoriaId: string, subcategoriaId: string, payload: Partial<CreateSubcategoriaPayload>): Promise<Subcategoria> =>
+    api.patch(`/categorias/${categoriaId}/subcategorias/${subcategoriaId}`, payload).then(r => r.data),
+
   desativarSubcategoria: (categoriaId: string, subcategoriaId: string): Promise<void> =>
     api.delete(`/categorias/${categoriaId}/subcategorias/${subcategoriaId}`).then(r => r.data),
 };

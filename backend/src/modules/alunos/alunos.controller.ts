@@ -56,6 +56,14 @@ export class AlunosController {
     res.send(buffer);
   }
 
+  /** GET /alunos/opcoes — Valores distintos de campus e curso */
+  @Get('opcoes')
+  @ApiOperation({ summary: 'Retorna listas de campus e cursos únicos para autocomplete' })
+  @ApiResponse({ status: 200, schema: { example: { campi: ['Campus A'], cursos: ['Técnico em Informática'] } } })
+  getOpcoes() {
+    return this.service.getOpcoes();
+  }
+
   /** GET /alunos/buscar — Autocomplete por matrícula/nome */
   @Get('buscar')
   @Serialize(AlunoResponseDto)

@@ -21,7 +21,7 @@ export class OcorrenciasController {
   constructor(private readonly service: OcorrenciasService) {}
 
   @Post()
-  @Roles(PerfilUsuario.PROFESSOR, PerfilUsuario.COORDENADOR, PerfilUsuario.EQUIPE_PEDAGOGICA, PerfilUsuario.DIRETOR)
+  @Roles(PerfilUsuario.PROFESSOR, PerfilUsuario.COORDENADOR, PerfilUsuario.EQUIPE_PEDAGOGICA, PerfilUsuario.DIRETOR, PerfilUsuario.ADMIN)
   @ApiOperation({ summary: 'Registrar nova ocorrência (RF-03)' })
   @ApiResponse({ status: 201, description: 'Ocorrência criada. Código gerado no formato OC-AAAA-NNNNN-SS.', type: OcorrenciaResponseDto })
   @ApiResponse({ status: 400, description: 'DTO inválido; aluno sem matrícula ativa (RN-01); data retroativa > 90 dias sem aprovação do Diretor (RN-11)' })

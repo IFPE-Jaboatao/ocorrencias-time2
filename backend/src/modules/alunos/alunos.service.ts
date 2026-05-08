@@ -163,6 +163,19 @@ export class AlunosService {
     return { importados, ignorados, erros };
   }
 
+  // ── Opções de autocomplete ────────────────────────────────────────────────
+
+  async getOpcoes(): Promise<{ campi: string[]; cursos: string[] }> {
+    const [campiRows, cursosRows] = await Promise.all([
+      this.repo.createQueryBuilder('a').select('DISTINCT a.campus', 'campus').getRawMany(),
+      this.repo.createQueryBuilder('a').select('DISTINCT a.curso', 'curso').getRawMany(),
+    ]);
+    return {
+      campi:  campiRows.map((r: any) => r.campus).filter(Boolean).sort(),
+      cursos: cursosRows.map((r: any) => r.curso).filter(Boolean).sort(),
+    };
+  }
+
   // ── Template Excel para download ──────────────────────────────────────────
 
   gerarTemplate(): Buffer {

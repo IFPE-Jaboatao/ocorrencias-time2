@@ -1,11 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBearerAuth, ApiOperation, ApiParam,
   ApiResponse, ApiTags,
 } from '@nestjs/swagger';
-import { CategoriasService }      from './categorias.service';
-import { CreateCategoriaDto }     from './dto/create-categoria.dto';
-import { CreateSubcategoriaDto }  from './dto/create-subcategoria.dto';
+import { CategoriasService }       from './categorias.service';
+import { CreateCategoriaDto }      from './dto/create-categoria.dto';
+import { CreateSubcategoriaDto }   from './dto/create-subcategoria.dto';
+import { UpdateSubcategoriaDto }   from './dto/update-subcategoria.dto';
 import { Roles }                  from '../../common/decorators/roles.decorator';
 import { PerfilUsuario }          from '../../common/enums/perfil-usuario.enum';
 
@@ -70,6 +71,22 @@ export class CategoriasController {
   @ApiResponse({ status: 404, description: 'Categoria não encontrada' })
   listarSubcategorias(@Param('id') id: string) {
     return this.service.listarSubcategorias(id);
+  }
+
+  @Patch(':id/subcategorias/:subcategoriaId')
+  @Roles(PerfilUsuario.ADMIN)
+  @ApiOperation({ summary: 'Atualizar subcategoria' })
+  @ApiParam({ name: 'id', description: 'UUID da categoria pai' })
+  @ApiParam({ name: 'subcategoriaId', description: 'UUID da subcategoria' })
+  @ApiResponse({ status: 200, description: 'Subcategoria atualizada' })
+  @ApiResponse({ status: 403, description: 'Requer perfil ADMIN' })
+  @ApiResponse({ status: 404, description: 'Subcategoria não encontrada' })
+  atualizarSubcategoria(
+    @Param('id') id: string,
+    @Param('subcategoriaId') subcategoriaId: string,
+    @Body() dto: UpdateSubcategoriaDto,
+  ) {
+    return this.service.atualizarSubcategoria(id, subcategoriaId, dto);
   }
 
   @Delete(':id/subcategorias/:subcategoriaId')

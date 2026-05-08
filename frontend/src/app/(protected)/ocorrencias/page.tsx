@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { useOcorrencias } from '@/lib/hooks/useOcorrencias';
 import { SeveridadeBadge } from '@/components/ocorrencias/SeveridadeBadge';
 import { SlaIndicator } from '@/components/ocorrencias/SlaIndicator';
@@ -29,14 +30,15 @@ function detectarReincidentes(ocorrencias: Ocorrencia[]): Set<string> {
   return reincidentes;
 }
 
-export default function OcorrenciasPage() {
+function OcorrenciasContent() {
+  const searchParams                   = useSearchParams();
   const [page, setPage]               = useState(1);
-  const [filterStatus, setStatus]     = useState('');
-  const [filterSev, setSev]           = useState('');
-  const [filterCatId, setCatId]       = useState('');
-  const [filterSubId, setSubId]       = useState('');
-  const [filterInicio, setInicio]     = useState('');
-  const [filterFim, setFim]           = useState('');
+  const [filterStatus, setStatus]     = useState(searchParams.get('status') ?? '');
+  const [filterSev, setSev]           = useState(searchParams.get('severidade') ?? '');
+  const [filterCatId, setCatId]       = useState(searchParams.get('categoriaId') ?? '');
+  const [filterSubId, setSubId]       = useState(searchParams.get('subcategoriaId') ?? '');
+  const [filterInicio, setInicio]     = useState(searchParams.get('dataInicio') ?? '');
+  const [filterFim, setFim]           = useState(searchParams.get('dataFim') ?? '');
 
   const { data: categorias } = useQuery({
     queryKey: ['categorias'],
@@ -340,5 +342,13 @@ export default function OcorrenciasPage() {
     })()}
 
     </div>
+  );
+}
+
+export default function OcorrenciasPage() {
+  return (
+    <Suspense>
+      <OcorrenciasContent />
+    </Suspense>
   );
 }

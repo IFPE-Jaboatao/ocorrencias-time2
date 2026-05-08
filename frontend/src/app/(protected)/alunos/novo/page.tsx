@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { alunosApi } from '@/lib/api/alunos.api';
@@ -32,6 +32,12 @@ export default function NovoAlunoPage() {
   const router  = useRouter();
   const [form, setForm]   = useState<FormData>(INITIAL);
   const [errors, setErrors] = useState<Partial<FormData>>({});
+
+  const { data: opcoes } = useQuery({
+    queryKey: ['alunos-opcoes'],
+    queryFn:  alunosApi.getOpcoes,
+    staleTime: 5 * 60_000,
+  });
 
   const mutation = useMutation({
     mutationFn: () => alunosApi.criar(form as any),
@@ -179,11 +185,15 @@ export default function NovoAlunoPage() {
             </label>
             <input
               type="text"
+              list="lista-campi"
               value={form.campus}
               onChange={e => handleChange('campus', e.target.value)}
               placeholder="Ex: Campus A"
               className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${errors.campus ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
             />
+            <datalist id="lista-campi">
+              {opcoes?.campi.map(c => <option key={c} value={c} />)}
+            </datalist>
             {errors.campus && <p className="text-xs text-red-600 mt-1">{errors.campus}</p>}
           </div>
         </div>
@@ -197,11 +207,15 @@ export default function NovoAlunoPage() {
             </label>
             <input
               type="text"
+              list="lista-cursos"
               value={form.curso}
               onChange={e => handleChange('curso', e.target.value)}
               placeholder="Ex: Técnico em Informática"
               className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${errors.curso ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
             />
+            <datalist id="lista-cursos">
+              {opcoes?.cursos.map(c => <option key={c} value={c} />)}
+            </datalist>
             {errors.curso && <p className="text-xs text-red-600 mt-1">{errors.curso}</p>}
           </div>
 
