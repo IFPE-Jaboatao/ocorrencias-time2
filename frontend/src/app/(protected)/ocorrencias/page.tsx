@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useOcorrencias } from '@/lib/hooks/useOcorrencias';
 import { SeveridadeBadge } from '@/components/ocorrencias/SeveridadeBadge';
 import { SlaIndicator } from '@/components/ocorrencias/SlaIndicator';
+import { categoriasApi } from '@/lib/api/categorias.api';
 import Link from 'next/link';
 import type { StatusOcorrencia, Ocorrencia } from '@/types/ocorrencia.types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX, TriangleAlert } from 'lucide-react';
+import { Plus, Filter, ChevronLeft, ChevronRight, ArrowRight, FileX, TriangleAlert, X } from 'lucide-react';
 import { STATUS_LABELS, STATUS_CORES } from '@/lib/constants/ocorrencia.constants';
 
 /** RN-03: detecta reincidência dentro dos dados carregados na página */
@@ -28,15 +30,38 @@ function detectarReincidentes(ocorrencias: Ocorrencia[]): Set<string> {
 }
 
 export default function OcorrenciasPage() {
-  const [page, setPage]           = useState(1);
-  const [filterStatus, setStatus] = useState('');
-  const [filterSev, setSev]       = useState('');
+  const [page, setPage]               = useState(1);
+  const [filterStatus, setStatus]     = useState('');
+  const [filterSev, setSev]           = useState('');
+  const [filterCatId, setCatId]       = useState('');
+  const [filterSubId, setSubId]       = useState('');
+  const [filterInicio, setInicio]     = useState('');
+  const [filterFim, setFim]           = useState('');
+
+  const { data: categorias } = useQuery({
+    queryKey: ['categorias'],
+    queryFn:  categoriasApi.listar,
+    staleTime: 5 * 60_000,
+  });
+
+  const catSelecionada = categorias?.find(c => c.id === filterCatId);
+
+  function limparFiltros() {
+    setStatus(''); setSev(''); setCatId(''); setSubId('');
+    setInicio(''); setFim(''); setPage(1);
+  }
+
+  const temFiltro = filterStatus || filterSev || filterCatId || filterSubId || filterInicio || filterFim;
 
   const { data, isLoading, isError } = useOcorrencias({
     page,
-    pageSize: 20,
-    status:    filterStatus || undefined,
-    severidade: filterSev ? Number(filterSev) : undefined,
+    pageSize:      20,
+    status:        filterStatus    || undefined,
+    severidade:    filterSev       ? Number(filterSev) : undefined,
+    categoriaId:   filterCatId     || undefined,
+    subcategoriaId: filterSubId    || undefined,
+    dataInicio:    filterInicio    || undefined,
+    dataFim:       filterFim       || undefined,
   });
 
   return (
@@ -60,39 +85,92 @@ export default function OcorrenciasPage() {
       </div>
 
       {/* ── Filtros ── */}
-      <div className="flex flex-wrap gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex items-center gap-2 text-gray-400">
-          <Filter size={15} />
-          <span className="text-xs font-medium">Filtros</span>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-gray-400">
+            <Filter size={15} />
+            <span className="text-xs font-medium">Filtros</span>
+          </div>
+          {temFiltro && (
+            <button
+              onClick={limparFiltros}
+              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <X size={12} /> Limpar
+            </button>
+          )}
         </div>
-        <select
-          value={filterStatus}
-          onChange={e => { setStatus(e.target.value); setPage(1); }}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">Todos os status</option>
-          {(Object.keys(STATUS_LABELS) as StatusOcorrencia[]).map(s => (
-            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-          ))}
-        </select>
-        <select
-          value={filterSev}
-          onChange={e => { setSev(e.target.value); setPage(1); }}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">Todas as severidades</option>
-          {[1, 2, 3, 4, 5].map(s => (
-            <option key={s} value={s}>Severidade {s}</option>
-          ))}
-        </select>
-        {(filterStatus || filterSev) && (
-          <button
-            onClick={() => { setStatus(''); setSev(''); setPage(1); }}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+
+        <div className="flex flex-wrap gap-3">
+          {/* Status */}
+          <select
+            value={filterStatus}
+            onChange={e => { setStatus(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            Limpar filtros
-          </button>
-        )}
+            <option value="">Todos os status</option>
+            {(Object.keys(STATUS_LABELS) as StatusOcorrencia[]).map(s => (
+              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+
+          {/* Severidade */}
+          <select
+            value={filterSev}
+            onChange={e => { setSev(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas as severidades</option>
+            {[1, 2, 3, 4, 5].map(s => (
+              <option key={s} value={s}>Severidade {s}</option>
+            ))}
+          </select>
+
+          {/* Categoria */}
+          <select
+            value={filterCatId}
+            onChange={e => { setCatId(e.target.value); setSubId(''); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas as categorias</option>
+            {categorias?.map(c => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+
+          {/* Subcategoria — só aparece se categoria selecionada tem subcategorias */}
+          {catSelecionada && catSelecionada.subcategorias.length > 0 && (
+            <select
+              value={filterSubId}
+              onChange={e => { setSubId(e.target.value); setPage(1); }}
+              className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas as subcategorias</option>
+              {catSelecionada.subcategorias.map(s => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Datas */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <span className="text-xs text-gray-400">Período:</span>
+          <input
+            type="date"
+            value={filterInicio}
+            onChange={e => { setInicio(e.target.value); setPage(1); }}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-xs text-gray-400">até</span>
+          <input
+            type="date"
+            value={filterFim}
+            onChange={e => { setFim(e.target.value); setPage(1); }}
+            min={filterInicio || undefined}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       {/* ── Estados de loading/error ── */}

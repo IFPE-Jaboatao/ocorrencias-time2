@@ -2,21 +2,26 @@ import { api } from './client';
 import { Ocorrencia, PaginatedResponse } from '@/types/ocorrencia.types';
 
 export interface CreateOcorrenciaPayload {
-  alunoId:      string;
-  categoriaId:  string;
-  subcategoria?: string;
-  severidade:   number;
-  dataIncidente: string;
-  local:        string;
-  descricao:    string;
+  alunoId:        string;
+  categoriaId:    string;
+  subcategoriaId?: string;
+  subcategoria?:  string;
+  severidade:     number;
+  dataIncidente:  string;
+  local:          string;
+  descricao:      string;
 }
 
 export interface FilterParams {
-  status?:    string;
-  alunoId?:   string;
-  severidade?: number;
-  page?:      number;
-  pageSize?:  number;
+  status?:        string;
+  alunoId?:       string;
+  severidade?:    number;
+  categoriaId?:   string;
+  subcategoriaId?: string;
+  dataInicio?:    string;
+  dataFim?:       string;
+  page?:          number;
+  pageSize?:      number;
 }
 
 export interface ReincidenciaInfo {

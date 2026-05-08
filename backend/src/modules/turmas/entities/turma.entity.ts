@@ -7,8 +7,14 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Segmento } from '../../../common/enums/segmento.enum';
-import { Aluno } from '../../alunos/entities/aluno.entity';
 import { UsuarioTurma } from './usuario-turma.entity';
+
+export enum Turno {
+  MANHA    = 'MANHA',
+  TARDE    = 'TARDE',
+  NOITE    = 'NOITE',
+  INTEGRAL = 'INTEGRAL',
+}
 
 @Entity('turmas')
 export class Turma {
@@ -26,14 +32,14 @@ export class Turma {
   @Column({ name: 'ano_letivo', type: 'int' })
   anoLetivo: number;
 
+  @Column({ type: 'enum', enum: Turno, nullable: true })
+  turno: Turno | null;
+
   @Column({ default: true }) ativo: boolean;
 
-  @CreateDateColumn({ name: 'criado_em' }) criadoEm: Date;
+  @CreateDateColumn({ name: 'criado_em' })     criadoEm: Date;
   @UpdateDateColumn({ name: 'atualizado_em' }) atualizadoEm: Date;
 
-  @OneToMany(() => Aluno, aluno => aluno.turmaRef)
-  alunos: Aluno[];
-
-  @OneToMany(() => UsuarioTurma, usuarioTurma => usuarioTurma.turma)
+  @OneToMany(() => UsuarioTurma, ut => ut.turma)
   usuarios: UsuarioTurma[];
 }

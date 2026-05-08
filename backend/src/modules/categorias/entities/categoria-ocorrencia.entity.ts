@@ -1,5 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Segmento } from '../../../common/enums/segmento.enum';
+import { SubcategoriaOcorrencia } from './subcategoria-ocorrencia.entity';
 
 @Entity('categorias_ocorrencia')
 export class CategoriaOcorrencia {
@@ -7,7 +8,8 @@ export class CategoriaOcorrencia {
 
   @Column()                       nome: string;
 
-  @Column({ type: 'json' })       subcategorias: string[];
+  @OneToMany(() => SubcategoriaOcorrencia, s => s.categoria, { cascade: true })
+  subcategorias: SubcategoriaOcorrencia[];
 
   @Column({ name: 'severidade_padrao', type: 'tinyint', default: 1 })
   severidadePadrao: number;

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard, AlertTriangle, Plus,
   LogOut, Menu, X, Building2, ChevronRight,
-  Users, Tag, BarChart3, GraduationCap,
+  Users, Tag, BarChart3, GraduationCap, BookOpen,
 } from 'lucide-react';
 import { getMe, logout as sessionLogout } from '@/lib/auth/session';
 import { authApi } from '@/lib/api/auth.api';

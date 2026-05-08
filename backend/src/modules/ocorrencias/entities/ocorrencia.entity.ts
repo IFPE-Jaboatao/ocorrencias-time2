@@ -7,10 +7,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Aluno }                from '../../alunos/entities/aluno.entity';
-import { Usuario }              from '../../usuarios/entities/usuario.entity';
-import { CategoriaOcorrencia }  from '../../categorias/entities/categoria-ocorrencia.entity';
-import { StatusOcorrencia }     from '../../../common/enums/status-ocorrencia.enum';
+import { Aluno }                  from '../../alunos/entities/aluno.entity';
+import { Usuario }                from '../../usuarios/entities/usuario.entity';
+import { CategoriaOcorrencia }    from '../../categorias/entities/categoria-ocorrencia.entity';
+import { SubcategoriaOcorrencia } from '../../categorias/entities/subcategoria-ocorrencia.entity';
+import { StatusOcorrencia }       from '../../../common/enums/status-ocorrencia.enum';
 
 export enum CienciaFormalStatus {
   PENDENTE   = 'PENDENTE',
@@ -44,6 +45,13 @@ export class Ocorrencia {
   @Column({ name: 'categoria_id' }) categoriaId: string;
 
   @Column({ type: 'varchar', length: 200, nullable: true }) subcategoria: string | null;
+
+  @ManyToOne(() => SubcategoriaOcorrencia, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'subcategoria_id' })
+  subcategoriaRef: SubcategoriaOcorrencia | null;
+
+  @Column({ name: 'subcategoria_id', type: 'varchar', length: 36, nullable: true })
+  subcategoriaId: string | null;
 
   @Column({ type: 'tinyint' })    severidade: number;
 

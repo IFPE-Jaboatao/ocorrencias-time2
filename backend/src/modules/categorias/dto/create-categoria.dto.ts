@@ -7,10 +7,6 @@ export class CreateCategoriaDto {
   @IsString() @IsNotEmpty()
   nome: string;
 
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional() @IsArray() @IsString({ each: true })
-  subcategorias?: string[];
-
   @ApiProperty({ minimum: 1, maximum: 5, default: 1 })
   @IsInt() @Min(1) @Max(5)
   severidadePadrao: number;

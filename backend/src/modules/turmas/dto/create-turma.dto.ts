@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Segmento } from '../../../common/enums/segmento.enum';
+import { Turno } from '../entities/turma.entity';
 
 export class CreateTurmaDto {
   @ApiProperty({ example: '8A' })
@@ -31,6 +32,11 @@ export class CreateTurmaDto {
   @IsInt()
   @Min(2000)
   anoLetivo: number;
+
+  @ApiPropertyOptional({ enum: Turno, description: 'Turno da turma' })
+  @IsOptional()
+  @IsEnum(Turno)
+  turno?: Turno;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

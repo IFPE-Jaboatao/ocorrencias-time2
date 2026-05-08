@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { StatusOcorrencia } from '../../../common/enums/status-ocorrencia.enum';
 import { Segmento }         from '../../../common/enums/segmento.enum';
@@ -28,4 +28,12 @@ export class FiltroRelatorioDto {
   @ApiPropertyOptional()
   @IsOptional()
   campus?: string;
+
+  @ApiPropertyOptional({ description: 'Filtrar por categoria' })
+  @IsOptional() @IsUUID()
+  categoriaId?: string;
+
+  @ApiPropertyOptional({ description: 'Filtrar por subcategoria' })
+  @IsOptional() @IsUUID()
+  subcategoriaId?: string;
 }

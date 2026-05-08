@@ -1,12 +1,14 @@
 import { api } from './client';
 
 export interface FiltrosRelatorio {
-  dataInicio?: string;
-  dataFim?:    string;
-  status?:     string;
-  severidade?: number;
-  segmento?:   string;
-  campus?:     string;
+  dataInicio?:    string;
+  dataFim?:       string;
+  status?:        string;
+  severidade?:    number;
+  segmento?:      string;
+  campus?:        string;
+  categoriaId?:   string;
+  subcategoriaId?: string;
 }
 
 export interface ResumoRelatorio {

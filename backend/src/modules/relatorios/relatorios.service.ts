@@ -48,6 +48,12 @@ export class RelatoriosService {
     if (filtros.campus) {
       qb.andWhere('aluno.campus = :campus', { campus: filtros.campus });
     }
+    if (filtros.categoriaId) {
+      qb.andWhere('oc.categoriaId = :catId', { catId: filtros.categoriaId });
+    }
+    if (filtros.subcategoriaId) {
+      qb.andWhere('oc.subcategoriaId = :subcatId', { subcatId: filtros.subcategoriaId });
+    }
 
     return qb;
   }

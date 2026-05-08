@@ -8,6 +8,7 @@ import { alunosApi }          from '@/lib/api/alunos.api';
 import { categoriasApi }      from '@/lib/api/categorias.api';
 import { useCriarOcorrencia } from '@/lib/hooks/useOcorrencias';
 import type { Aluno } from '@/types/ocorrencia.types';
+import type { Subcategoria } from '@/lib/api/categorias.api';
 
 const SEV_CONFIG = [
   { n: 1 as const, label: 'Informativa', cor: 'bg-gray-100 text-gray-600 border-gray-200',         sel: 'bg-gray-600 text-white border-gray-600' },
@@ -34,7 +35,7 @@ export default function NovaOcorrenciaPage() {
   const [aluno, setAluno]             = useState<Aluno | null>(null);
   const [inputFocado, setInputFocado] = useState(false);
   const [categoriaId, setCategoriaId] = useState('');
-  const [subcategoria, setSub]        = useState('');
+  const [subcategoriaId, setSubId]    = useState('');
   const [severidade, setSev]          = useState(1);
   const [dataIncidente, setData]      = useState('');
   const [local, setLocal]             = useState('');
@@ -55,7 +56,8 @@ export default function NovaOcorrenciaPage() {
     queryFn:  categoriasApi.listar,
   });
 
-  const categoriaSelecionada = categorias?.find(c => c.id === categoriaId);
+  const categoriaSelecionada  = categorias?.find(c => c.id === categoriaId);
+  const subcatSelecionada: Subcategoria | undefined = categoriaSelecionada?.subcategorias.find(s => s.id === subcategoriaId);
   const sevAtual = SEV_CONFIG.find(s => s.n === severidade)!;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -63,7 +65,7 @@ export default function NovaOcorrenciaPage() {
     if (!aluno) { setError('Selecione um aluno.'); return; }
     setError('');
     criar.mutate(
-      { alunoId: aluno.id, categoriaId, subcategoria: subcategoria || undefined, severidade, dataIncidente, local, descricao },
+      { alunoId: aluno.id, categoriaId, subcategoriaId: subcategoriaId || undefined, severidade, dataIncidente, local, descricao },
       {
         onSuccess: (oc) => router.push(`/ocorrencias/${oc.id}`),
         onError:   (err: unknown) => setError(err instanceof Error ? err.message : 'Erro ao registrar ocorrência.'),
@@ -165,7 +167,7 @@ export default function NovaOcorrenciaPage() {
               <select
                 required
                 value={categoriaId}
-                onChange={e => { setCategoriaId(e.target.value); setSub(''); }}
+                onChange={e => { setCategoriaId(e.target.value); setSubId(''); }}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Selecione uma categoria</option>
@@ -177,15 +179,29 @@ export default function NovaOcorrenciaPage() {
 
             {categoriaSelecionada && categoriaSelecionada.subcategorias.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Subcategoria</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Subcategoria
+                  {subcatSelecionada && (
+                    <span className="ml-2 text-xs text-blue-600 font-normal">
+                      → severidade {subcatSelecionada.severidadePadrao} aplicada automaticamente
+                    </span>
+                  )}
+                </label>
                 <select
-                  value={subcategoria}
-                  onChange={e => setSub(e.target.value)}
+                  value={subcategoriaId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setSubId(id);
+                    if (id) {
+                      const sub = categoriaSelecionada.subcategorias.find(s => s.id === id);
+                      if (sub) setSev(sub.severidadePadrao);
+                    }
+                  }}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Nenhuma</option>
                   {categoriaSelecionada.subcategorias.map(s => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.id} value={s.id}>{s.nome} (sev. {s.severidadePadrao}, {s.slaHoras}h)</option>
                   ))}
                 </select>
               </div>

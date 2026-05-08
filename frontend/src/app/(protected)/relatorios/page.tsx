@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { relatoriosApi, type FiltrosRelatorio, type ResumoRelatorio } from '@/lib/api/relatorios.api';
+import { categoriasApi } from '@/lib/api/categorias.api';
 import {
   BarChart3, Download, Search, AlertTriangle, Clock,
   CheckCircle2, Archive, Activity, BookOpen, Tag,
@@ -91,6 +92,14 @@ export default function RelatoriosPage() {
   const [applied, setApplied]     = useState<FiltrosRelatorio>(initFiltros());
   const [exporting, setExporting] = useState(false);
 
+  const { data: categorias } = useQuery({
+    queryKey: ['categorias'],
+    queryFn:  categoriasApi.listar,
+    staleTime: 5 * 60_000,
+  });
+
+  const catSelecionada = categorias?.find(c => c.id === filtros.categoriaId);
+
   const { data: resumo, isLoading, isError, refetch } = useQuery<ResumoRelatorio>({
     queryKey: ['relatorios', 'resumo', applied],
     queryFn:  () => relatoriosApi.resumo(applied),
@@ -140,7 +149,7 @@ export default function RelatoriosPage() {
       {/* Filtros */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">Filtros</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Data início</label>
             <input
@@ -192,6 +201,30 @@ export default function RelatoriosPage() {
               {Object.entries(SEG_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Categoria</label>
+            <select
+              value={filtros.categoriaId ?? ''}
+              onChange={e => setFiltros(f => ({ ...f, categoriaId: e.target.value || undefined, subcategoriaId: undefined }))}
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todas</option>
+              {categorias?.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+          {catSelecionada && catSelecionada.subcategorias.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Subcategoria</label>
+              <select
+                value={filtros.subcategoriaId ?? ''}
+                onChange={e => setFiltros(f => ({ ...f, subcategoriaId: e.target.value || undefined }))}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todas</option>
+                {catSelecionada.subcategorias.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex items-end">
             <button
               onClick={aplicarFiltros}
