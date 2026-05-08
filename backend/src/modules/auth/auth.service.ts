@@ -15,6 +15,7 @@ import { RefreshToken }      from './entities/refresh-token.entity';
 import { Usuario }           from '../usuarios/entities/usuario.entity';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { MAGIC_LINK_TTL_MINUTES } from '../../common/constants/domain.constants';
+import { MailService }       from './mail.service';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly usuarioRepo: Repository<Usuario>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async solicitarMagicLink(email: string): Promise<string> {
@@ -40,6 +42,10 @@ export class AuthService {
     await this.magicLinkRepo.save(
       this.magicLinkRepo.create({ usuarioId: usuario.id, tokenHash, expiresAt, usedAt: null }),
     );
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const linkUrl     = `${frontendUrl}/auth/callback?token=${rawToken}`;
+    await this.mailService.enviarMagicLink(usuario.email, usuario.nome, linkUrl);
 
     return rawToken;
   }

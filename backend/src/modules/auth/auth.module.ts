@@ -5,6 +5,7 @@ import { PassportModule }  from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController }  from './auth.controller';
 import { AuthService }     from './auth.service';
+import { MailService }     from './mail.service';
 import { JwtStrategy }     from './strategies/jwt.strategy';
 import { JwtAuthGuard }    from './guards/jwt-auth.guard';
 import { MagicLinkToken }  from './entities/magic-link-token.entity';
@@ -25,7 +26,7 @@ import { Usuario }         from '../usuarios/entities/usuario.entity';
     }),
   ],
   controllers: [AuthController],
-  providers:   [AuthService, JwtStrategy, JwtAuthGuard],
+  providers:   [AuthService, MailService, JwtStrategy, JwtAuthGuard],
   exports:     [AuthService, JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
