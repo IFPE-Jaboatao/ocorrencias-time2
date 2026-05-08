@@ -21,6 +21,17 @@ describe('Ocorrências — E2E', () => {
   beforeAll(async () => {
     app    = await createTestApp();
     ds     = app.get(DataSource);
+
+    // Limpar dados transacionais de suites anteriores para garantir
+    // que o contador de codigo_sequencia comece do zero para esta suite
+    await ds.query('SET FOREIGN_KEY_CHECKS = 0');
+    for (const t of ['validacoes_ocorrencia', 'encaminhamentos', 'notificacoes',
+                     'comentarios', 'ciencias_formais', 'auditorias',
+                     'ocorrencias', 'codigo_sequencia']) {
+      await ds.query(`TRUNCATE TABLE \`${t}\``).catch(() => {});
+    }
+    await ds.query('SET FOREIGN_KEY_CHECKS = 1');
+
     seeds  = await seedTestData(ds);
 
     tokenProfessor    = gerarToken(app, { sub: seeds.professor.id,    email: seeds.professor.email,    perfil: PerfilUsuario.PROFESSOR,    campus: 'Campus A', segmentos: [Segmento.FUNDAMENTAL] });
