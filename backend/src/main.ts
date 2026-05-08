@@ -6,6 +6,7 @@ import helmet                             from 'helmet';
 import cookieParser                        from 'cookie-parser';
 import { AppModule }                     from './app.module';
 import { HttpExceptionFilter }           from './common/filters/http-exception.filter';
+import { validationExceptionFactory }   from './common/utils/validation-messages.util';
 import { CsrfMiddleware }                from './common/middleware/csrf.middleware';
 
 async function bootstrap() {
@@ -27,6 +28,7 @@ async function bootstrap() {
       whitelist:            true,
       forbidNonWhitelisted: true,
       transform:            true,
+      exceptionFactory:     validationExceptionFactory,
     }),
   );
 

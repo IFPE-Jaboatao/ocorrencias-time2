@@ -40,12 +40,14 @@ api.interceptors.response.use(
       }
     }
 
-    // Usa a mensagem do backend (ex: "RN-08: ...") em vez de "Request failed with status code 403"
+    // Usa a mensagem do backend em vez de "Request failed with status code 4XX".
+    // Remove prefixos internos (RN-08:, RF-01:) que não devem aparecer na UI.
     const serverMessage = error.response?.data?.message;
     if (serverMessage) {
-      error.message = Array.isArray(serverMessage)
-        ? serverMessage.join('; ')   // class-validator retorna array em 400
-        : serverMessage;
+      const raw = Array.isArray(serverMessage)
+        ? serverMessage.join('; ')
+        : String(serverMessage);
+      error.message = raw.replace(/^[A-Z]+-\d+:\s*/, '');
     }
 
     return Promise.reject(error);
