@@ -63,41 +63,113 @@ async function seed() {
       );
     }
 
-    // ── Categorias de ocorrência ───────────────────────────────────────────
-    const categorias = [
+    // ── Categorias e subcategorias (Manual do Discente CJBG) ─────────────
+    // Fonte: docs/CATEGORIAS_MANUAL_DISCENTE_CJBG.md
+    const SEGS_ALL = JSON.stringify(['FUNDAMENTAL', 'MEDIO', 'SUPERIOR']);
+
+    interface SubDef {
+      nome: string; sev: number; sla: number;
+      val: boolean; notif: boolean; legal: boolean; proto: string | null;
+    }
+    interface CatDef {
+      nome: string; sev: number; sla: number;
+      val: boolean; notif: boolean; legal: boolean;
+      subs: SubDef[];
+    }
+
+    const categoriasDefs: CatDef[] = [
       {
-        nome: 'Disciplinar',
-        subcategorias: JSON.stringify(['Agressão física', 'Bullying/Cyberbullying', 'Porte de objeto perigoso', 'Desrespeito a professor']),
-        severidade_padrao: 3, sla_horas: 48, exige_notif_responsavel: 1,
-        obrigatorio_legal: 0, segmentos_aplicaveis: JSON.stringify(['FUNDAMENTAL', 'MEDIO', 'SUPERIOR']), exige_validacao: 1,
+        nome: 'Disciplinar', sev: 3, sla: 48, val: true, notif: true, legal: false,
+        subs: [
+          { nome: 'Agressão física entre discentes',      sev: 4, sla: 24,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Agressão verbal / ameaça',             sev: 3, sla: 48,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Bullying presencial',                  sev: 3, sla: 48,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Cyberbullying',                        sev: 3, sla: 48,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Desrespeito a docente ou funcionário', sev: 3, sla: 48,  val: true,  notif: false, legal: false, proto: null },
+          { nome: 'Porte de objeto cortante ou perigoso', sev: 5, sla: 4,   val: true,  notif: true,  legal: true,  proto: 'CONSELHO_TUTELAR' },
+          { nome: 'Dano ao patrimônio escolar',           sev: 2, sla: 72,  val: false, notif: false, legal: false, proto: null },
+          { nome: 'Recusa a cumprir orientação',          sev: 2, sla: 72,  val: false, notif: false, legal: false, proto: null },
+          { nome: 'Invasão de espaço restrito',           sev: 3, sla: 48,  val: true,  notif: false, legal: false, proto: null },
+        ],
       },
       {
-        nome: 'Acadêmica',
-        subcategorias: JSON.stringify(['Plágio/Desonestidade', 'Infrequência crítica (>25%)', 'Reprovação por falta']),
-        severidade_padrao: 2, sla_horas: 72, exige_notif_responsavel: 1,
-        obrigatorio_legal: 0, segmentos_aplicaveis: JSON.stringify(['FUNDAMENTAL', 'MEDIO', 'SUPERIOR']), exige_validacao: 0,
+        nome: 'Frequência e Absenteísmo', sev: 2, sla: 72, val: false, notif: true, legal: false,
+        subs: [
+          { nome: 'Infrequência crítica (> 25% de faltas)', sev: 3, sla: 48,  val: false, notif: true, legal: true,  proto: 'CONSELHO_TUTELAR' },
+          { nome: 'Faltas injustificadas recorrentes',      sev: 2, sla: 72,  val: false, notif: true, legal: false, proto: null },
+          { nome: 'Atraso reiterado (> 3x por bimestre)',   sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+          { nome: 'Ausência em avaliação sem justificativa',sev: 2, sla: 72,  val: false, notif: false, legal: false, proto: null },
+          { nome: 'Evasão escolar (risco)',                 sev: 4, sla: 24,  val: true,  notif: true, legal: true,  proto: 'CONSELHO_TUTELAR' },
+        ],
       },
       {
-        nome: 'Saúde/Bem-estar',
-        subcategorias: JSON.stringify(['Suspeita de violência doméstica', 'Automutilação / risco', 'Problema de saúde grave']),
-        severidade_padrao: 4, sla_horas: 24, exige_notif_responsavel: 1,
-        obrigatorio_legal: 1, segmentos_aplicaveis: JSON.stringify(['FUNDAMENTAL', 'MEDIO', 'SUPERIOR']), exige_validacao: 1,
+        nome: 'Integridade Acadêmica', sev: 3, sla: 48, val: true, notif: false, legal: false,
+        subs: [
+          { nome: 'Plágio em trabalho acadêmico',              sev: 3, sla: 48, val: true, notif: false, legal: false, proto: null },
+          { nome: 'Cópia em avaliação (cola)',                 sev: 3, sla: 48, val: true, notif: false, legal: false, proto: null },
+          { nome: 'Fraude em documentos escolares',            sev: 4, sla: 24, val: true, notif: true,  legal: false, proto: null },
+          { nome: 'Uso indevido de IA em avaliação',          sev: 3, sla: 48, val: true, notif: false, legal: false, proto: null },
+          { nome: 'Venda ou cessão de trabalhos acadêmicos',   sev: 4, sla: 24, val: true, notif: true,  legal: false, proto: null },
+        ],
       },
       {
-        nome: 'Comportamental',
-        subcategorias: JSON.stringify(['Uso de celular em aula', 'Vocabulário inadequado', 'Comportamento perturbador']),
-        severidade_padrao: 1, sla_horas: 120, exige_notif_responsavel: 0,
-        obrigatorio_legal: 0, segmentos_aplicaveis: JSON.stringify(['FUNDAMENTAL', 'MEDIO', 'SUPERIOR']), exige_validacao: 0,
+        nome: 'Saúde e Bem-estar', sev: 4, sla: 24, val: true, notif: true, legal: true,
+        subs: [
+          { nome: 'Suspeita de violência doméstica',            sev: 5, sla: 4,  val: true, notif: false, legal: true, proto: 'CONSELHO_TUTELAR' },
+          { nome: 'Automutilação ou risco de suicídio',         sev: 5, sla: 4,  val: true, notif: true,  legal: true, proto: null },
+          { nome: 'Surto ou crise de saúde mental',             sev: 4, sla: 24, val: true, notif: true,  legal: true, proto: null },
+          { nome: 'Acidente ou lesão física na escola',         sev: 3, sla: 48, val: false, notif: true, legal: true, proto: null },
+          { nome: 'Suspeita de uso de substâncias',             sev: 4, sla: 24, val: true, notif: true,  legal: false, proto: null },
+          { nome: 'Problema de saúde que compromete frequência',sev: 2, sla: 72, val: false, notif: true, legal: false, proto: null },
+        ],
+      },
+      {
+        nome: 'Uso de Tecnologia', sev: 1, sla: 120, val: false, notif: false, legal: false,
+        subs: [
+          { nome: 'Uso de celular em sala durante aula',         sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+          { nome: 'Acesso a conteúdo impróprio na rede escolar', sev: 3, sla: 48,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Gravação não autorizada de aula ou colegas',  sev: 3, sla: 48,  val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Compartilhamento indevido de dados de colegas',sev: 4, sla: 24, val: true,  notif: true,  legal: false, proto: null },
+          { nome: 'Uso indevido de credenciais institucionais',  sev: 3, sla: 48,  val: true,  notif: false, legal: false, proto: null },
+        ],
+      },
+      {
+        nome: 'Comportamento e Convivência', sev: 1, sla: 120, val: false, notif: false, legal: false,
+        subs: [
+          { nome: 'Comportamento perturbador em sala',      sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+          { nome: 'Linguagem inadequada',                   sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+          { nome: 'Desorganização do espaço de uso coletivo',sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+          { nome: 'Conflito interpessoal sem agressão',     sev: 2, sla: 72,  val: false, notif: false, legal: false, proto: null },
+          { nome: 'Descumprimento do uniforme escolar',     sev: 1, sla: 120, val: false, notif: false, legal: false, proto: null },
+        ],
       },
     ];
 
-    for (const c of categorias) {
+    for (const c of categoriasDefs) {
+      const catId = crypto.randomUUID();
       await q.query(
         `INSERT IGNORE INTO categorias_ocorrencia
-           (id, nome, subcategorias, severidade_padrao, sla_horas, exige_notif_responsavel, obrigatorio_legal, segmentos_aplicaveis, exige_validacao, ativo)
-         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-        [c.nome, c.subcategorias, c.severidade_padrao, c.sla_horas, c.exige_notif_responsavel, c.obrigatorio_legal, c.segmentos_aplicaveis, c.exige_validacao],
+           (id, nome, severidade_padrao, sla_horas, exige_notif_responsavel,
+            obrigatorio_legal, segmentos_aplicaveis, exige_validacao, ativo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        [catId, c.nome, c.sev, c.sla, c.notif ? 1 : 0, c.legal ? 1 : 0, SEGS_ALL, c.val ? 1 : 0],
       );
+      // Recuperar o id real (INSERT IGNORE pode ter pulado se já existia)
+      const [catRow] = await q.query(
+        `SELECT id FROM categorias_ocorrencia WHERE nome = ? LIMIT 1`, [c.nome]
+      );
+      const realCatId: string = catRow?.id ?? catId;
+
+      for (const s of c.subs) {
+        await q.query(
+          `INSERT IGNORE INTO subcategorias_ocorrencia
+             (id, categoria_id, nome, severidade_padrao, sla_horas,
+              exige_validacao, exige_notif_responsavel, obrigatorio_legal,
+              protocolo_externo, ativo)
+           VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          [realCatId, s.nome, s.sev, s.sla, s.val ? 1 : 0, s.notif ? 1 : 0, s.legal ? 1 : 0, s.proto],
+        );
+      }
     }
 
     // ── Alunos de teste ────────────────────────────────────────────────────
@@ -170,9 +242,9 @@ async function seed() {
     const [profRow]   = await q.query(`SELECT id FROM usuarios WHERE email = 'professor@escola.edu.br' LIMIT 1`);
     const [coordRow]  = await q.query(`SELECT id FROM usuarios WHERE email = 'coordenador@escola.edu.br' LIMIT 1`);
     const [catDisc]   = await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Disciplinar' LIMIT 1`);
-    const [catAcad]   = await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Acadêmica' LIMIT 1`);
-    const [catSaude]  = await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Saúde/Bem-estar' LIMIT 1`);
-    const [catComport]= await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Comportamental' LIMIT 1`);
+    const [catAcad]   = await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Integridade Acadêmica' LIMIT 1`);
+    const [catSaude]  = await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Saúde e Bem-estar' LIMIT 1`);
+    const [catComport]= await q.query(`SELECT id FROM categorias_ocorrencia WHERE nome = 'Comportamento e Convivência' LIMIT 1`);
 
     // Buscar alunos (INSERT IGNORE pode ter ignorado — buscar pelo dado real)
     const [lucasRow]  = await q.query(`SELECT id FROM alunos WHERE matricula = '2026FM0001' LIMIT 1`);
@@ -217,7 +289,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00001-FM`,
         alunoId: lucasId, regId: profId, catId: discId,
-        subcategoria: 'Bullying/Cyberbullying', sev: 3,
+        subcategoria: 'Cyberbullying', sev: 3,
         dataInc: daysAgo(5).slice(0, 10), local: 'Pátio — Bloco A',
         descricao: 'Aluno foi flagrado enviando mensagens ofensivas para colega de turma pelo grupo do WhatsApp da escola. Colega relatou à professora que estava sendo alvo de humilhações constantes desde o início do bimestre. Situação documentada com prints das mensagens.',
         status: 'ABERTA', dataResolucao: null, criadoEm: daysAgo(5),
@@ -225,7 +297,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00002-FM`,
         alunoId: lucasId, regId: profId, catId: comportId,
-        subcategoria: 'Uso de celular em aula', sev: 1,
+        subcategoria: 'Uso de celular em sala durante aula', sev: 1,
         dataInc: daysAgo(20).slice(0, 10), local: 'Sala 204 — Bloco B',
         descricao: 'Aluno utilizou o celular durante a aula de Matemática para jogar games. Advertido verbalmente. Celular recolhido e devolvido ao final da aula conforme regulamento escolar.',
         status: 'RESOLVIDA', dataResolucao: daysAgo(18), criadoEm: daysAgo(20),
@@ -241,7 +313,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00004-FM`,
         alunoId: lucasId, regId: profId, catId: acadId,
-        subcategoria: 'Infrequência crítica (>25%)', sev: 2,
+        subcategoria: 'Infrequência crítica (> 25% de faltas)', sev: 2,
         dataInc: daysAgo(7).slice(0, 10), local: 'Sala 204 — Bloco B',
         descricao: 'Aluno atingiu 28% de faltas no 2º bimestre, superando o limite legal de 25%. Contato com responsáveis realizado sem sucesso em duas tentativas. Situação encaminhada à coordenação para providências conforme ECA art. 56.',
         status: 'ABERTA', dataResolucao: null, criadoEm: daysAgo(7),
@@ -251,7 +323,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00001-ME`,
         alunoId: anaId, regId: profId, catId: acadId,
-        subcategoria: 'Plágio/Desonestidade', sev: 3,
+        subcategoria: 'Plágio em trabalho acadêmico', sev: 3,
         dataInc: daysAgo(10).slice(0, 10), local: 'Laboratório de Informática',
         descricao: 'Aluna entregou trabalho de Biologia com 85% de similaridade com artigo publicado online (verificado via Turnitin). Confrontada, alegou ter "se baseado muito" no texto sem referenciar. Trabalho zerado. Aguardando definição de medidas pedagógicas adicionais pela coordenação.',
         status: 'EM_ACOMPANHAMENTO', dataResolucao: null, criadoEm: daysAgo(10),
@@ -259,7 +331,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00002-ME`,
         alunoId: anaId, regId: profId, catId: comportId,
-        subcategoria: 'Vocabulário inadequado', sev: 2,
+        subcategoria: 'Linguagem inadequada', sev: 2,
         dataInc: daysAgo(25).slice(0, 10), local: 'Sala 301 — Bloco C',
         descricao: 'Aluna utilizou linguagem inadequada ao se referir à professora de Português na presença de colegas. Situação resolvida após conversa com a coordenação e pedido de desculpas formal à docente.',
         status: 'RESOLVIDA', dataResolucao: daysAgo(23), criadoEm: daysAgo(25),
@@ -267,7 +339,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00003-ME`,
         alunoId: anaId, regId: coordId, catId: saudeId,
-        subcategoria: 'Automutilação / risco', sev: 5,
+        subcategoria: 'Automutilação ou risco de suicídio', sev: 5,
         dataInc: daysAgo(1).slice(0, 10), local: 'Banheiro feminino — Bloco A',
         descricao: 'Colega relatou ao professor que Ana Paula comentou sobre pensamentos de se machucar. Ao ser chamada pela orientadora, a aluna confirmou estar passando por período difícil e apresentou marcas no antebraço. Responsável (pai) foi contatado e buscou a aluna. Equipe de saúde escolar acionada. Situação requer acompanhamento psicológico urgente.',
         status: 'AGUARDANDO_VALIDACAO', dataResolucao: null, criadoEm: daysAgo(1),
@@ -275,7 +347,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00004-ME`,
         alunoId: anaId, regId: profId, catId: discId,
-        subcategoria: 'Desrespeito a professor', sev: 2,
+        subcategoria: 'Desrespeito a docente ou funcionário', sev: 2,
         dataInc: daysAgo(8).slice(0, 10), local: 'Sala 301 — Bloco C',
         descricao: 'Aluna recusou-se a guardar o celular após solicitação do professor de Matemática e fez comentário irônico na frente da turma. Caso encaminhado à coordenação e resolvido com suspensão de 1 dia e Termo de Compromisso assinado pelos responsáveis.',
         status: 'RESOLVIDA', dataResolucao: daysAgo(6), criadoEm: daysAgo(8),
@@ -285,7 +357,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00001-SU`,
         alunoId: carlosId, regId: profId, catId: acadId,
-        subcategoria: 'Plágio/Desonestidade', sev: 3,
+        subcategoria: 'Plágio em trabalho acadêmico', sev: 3,
         dataInc: daysAgo(15).slice(0, 10), local: 'Laboratório de Programação',
         descricao: 'Aluno entregou projeto de Estrutura de Dados idêntico ao de outro aluno de turma diferente. Análise comparativa confirmou cópia integral (100% de similaridade no código-fonte). Nota zerada em ambos os casos. Processo de abertura de Comissão Disciplinar em andamento conforme regulamento acadêmico do curso.',
         status: 'EM_ACOMPANHAMENTO', dataResolucao: null, criadoEm: daysAgo(15),
@@ -293,7 +365,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00002-SU`,
         alunoId: carlosId, regId: profId, catId: discId,
-        subcategoria: 'Desrespeito a professor', sev: 2,
+        subcategoria: 'Desrespeito a docente ou funcionário', sev: 2,
         dataInc: daysAgo(3).slice(0, 10), local: 'Sala 501 — Bloco D',
         descricao: 'Aluno questionou de forma agressiva a nota recebida na prova de Banco de Dados, levantando a voz e interrompendo a aula. Após intervenção da coordenação, aluno se acalmou e pediu desculpas. Recomendado acompanhamento com orientador acadêmico.',
         status: 'ABERTA', dataResolucao: null, criadoEm: daysAgo(3),
@@ -301,7 +373,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00003-SU`,
         alunoId: carlosId, regId: coordId, catId: acadId,
-        subcategoria: 'Reprovação por falta', sev: 2,
+        subcategoria: 'Faltas injustificadas recorrentes', sev: 2,
         dataInc: daysAgo(30).slice(0, 10), local: 'Coordenação do Curso',
         descricao: 'Aluno atingiu 30% de faltas na disciplina de Engenharia de Software, ultrapassando o limite de 25% previsto no regulamento. Foi notificado formalmente sobre o risco de reprovação por frequência. Aluno assinou ciência e comprometeu-se a regularizar presença.',
         status: 'RESOLVIDA', dataResolucao: daysAgo(27), criadoEm: daysAgo(30),
@@ -309,7 +381,7 @@ async function seed() {
       {
         codigo: `OC-${ano}-00004-SU`,
         alunoId: carlosId, regId: profId, catId: comportId,
-        subcategoria: 'Comportamento perturbador', sev: 1,
+        subcategoria: 'Comportamento perturbador em sala', sev: 1,
         dataInc: daysAgo(12).slice(0, 10), local: 'Biblioteca — Campus A',
         descricao: 'Aluno e colega conversavam em volume alto na biblioteca, perturbando outros estudantes. Advertidos pelo bibliotecário e redirecionados para área de estudo em grupo.',
         status: 'RESOLVIDA', dataResolucao: daysAgo(12), criadoEm: daysAgo(12),
