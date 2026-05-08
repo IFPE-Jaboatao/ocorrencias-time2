@@ -139,9 +139,13 @@ export class OcorrenciasService {
         throw new ForbiddenException('Perfil sem acesso a listagem de ocorrências');
     }
 
-    if (filtros.status)    qb.andWhere('oc.status = :status',       { status:    filtros.status });
-    if (filtros.alunoId)   qb.andWhere('oc.alunoId = :alunoId',     { alunoId:   filtros.alunoId });
-    if (filtros.severidade) qb.andWhere('oc.severidade = :sev',     { sev:       filtros.severidade });
+    if (filtros.status)        qb.andWhere('oc.status = :status',             { status:      filtros.status });
+    if (filtros.alunoId)       qb.andWhere('oc.alunoId = :alunoId',           { alunoId:     filtros.alunoId });
+    if (filtros.severidade)    qb.andWhere('oc.severidade = :sev',             { sev:         filtros.severidade });
+    if (filtros.categoriaId)   qb.andWhere('oc.categoriaId = :catId',          { catId:       filtros.categoriaId });
+    if (filtros.subcategoriaId) qb.andWhere('oc.subcategoriaId = :subcatId',   { subcatId:    filtros.subcategoriaId });
+    if (filtros.dataInicio)    qb.andWhere('oc.dataIncidente >= :dataInicio',   { dataInicio:  filtros.dataInicio });
+    if (filtros.dataFim)       qb.andWhere('oc.dataIncidente <= :dataFim',      { dataFim:     filtros.dataFim });
 
     const [data, total] = await qb
       .orderBy('oc.criadoEm', 'DESC')
