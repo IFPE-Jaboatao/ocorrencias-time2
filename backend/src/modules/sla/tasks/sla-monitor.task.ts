@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron }               from '@nestjs/schedule';
 import { InjectRepository }   from '@nestjs/typeorm';
-import { LessThan, Not, In, Repository } from 'typeorm';
+import { LessThan, In, Repository } from 'typeorm';
 import { EventEmitter2 }      from '@nestjs/event-emitter';
 import { Ocorrencia }         from '../../ocorrencias/entities/ocorrencia.entity';
 import { StatusOcorrencia }   from '../../../common/enums/status-ocorrencia.enum';

@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class CreateEncaminhamentoDto {
   @ApiProperty({ example: 'Encaminhar para psicólogo escolar' })

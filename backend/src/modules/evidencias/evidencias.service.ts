@@ -22,7 +22,7 @@ export class EvidenciasService {
   /** Gera Pre-signed Upload URL para o frontend enviar diretamente ao S3 (H-11) */
   async gerarPresignedUrl(
     dto: PresignedUrlDto,
-    usuario: AuthenticatedUser,
+    _usuario: AuthenticatedUser,
   ): Promise<PresignedUrlResponseDto> {
     return this.upload.gerarPresignedUploadUrl(
       dto.ocorrenciaId,

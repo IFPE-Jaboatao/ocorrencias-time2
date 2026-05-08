@@ -77,7 +77,7 @@ export class UploadService {
    * Valida que o objeto já enviado ao S3 tem MIME real permitido (magic bytes — H-02).
    * Baixa apenas os primeiros 12 bytes (suficiente para qualquer assinatura).
    */
-  async validarMimeNoS3(s3Key: string, mimeTypeDeclarado: string): Promise<void> {
+  async validarMimeNoS3(s3Key: string, _mimeTypeDeclarado: string): Promise<void> {
     if (!this.s3Ok) return; // dev/test — pular validação
 
     try {

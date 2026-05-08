@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth, ApiOperation, ApiParam,
-  ApiQuery, ApiResponse, ApiTags,
+  ApiResponse, ApiTags,
 } from '@nestjs/swagger';
 import { OcorrenciasService }    from './ocorrencias.service';
 import { CreateOcorrenciaDto }   from './dto/create-ocorrencia.dto';
@@ -9,7 +9,6 @@ import { FilterOcorrenciaDto }   from './dto/filter-ocorrencia.dto';
 import { OcorrenciaResponseDto } from './dto/ocorrencia-response.dto';
 import { Roles }                 from '../../common/decorators/roles.decorator';
 import { CurrentUser }           from '../../common/decorators/current-user.decorator';
-import { Serialize }             from '../../common/interceptors/serialize.interceptor';
 import { PerfilUsuario }         from '../../common/enums/perfil-usuario.enum';
 import { StatusOcorrencia }      from '../../common/enums/status-ocorrencia.enum';
 import { AuthenticatedUser }     from '../../common/interfaces/authenticated-user.interface';
