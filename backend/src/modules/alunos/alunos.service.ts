@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository }              from '@nestjs/typeorm';
 import { Repository }                    from 'typeorm';
 import { differenceInYears }             from 'date-fns';
@@ -22,7 +22,9 @@ export class AlunosService {
     private readonly repo: Repository<Aluno>,
   ) {}
 
-  criar(dto: CreateAlunoDto): Promise<Aluno> {
+  async criar(dto: CreateAlunoDto): Promise<Aluno> {
+    const existente = await this.repo.findOne({ where: { matricula: dto.matricula } });
+    if (existente) throw new ConflictException(`Matrícula '${dto.matricula}' já está cadastrada.`);
     return this.repo.save(this.repo.create(dto));
   }
 
