@@ -36,16 +36,23 @@ export class NotificacoesService {
 
   @OnEvent('ocorrencia.criada')
   async aoOcorrenciaCriada({ ocorrencia, aluno }: { ocorrencia: Ocorrencia; aluno: any }) {
-    // H-05 — Sev >= 4 só notifica após validação
-    if (ocorrencia.severidade >= 4) return;
-
-    await this.despacharAsync(ocorrencia, aluno);
+    try {
+      // H-05 — Sev >= 4 só notifica após validação
+      if (ocorrencia.severidade >= 4) return;
+      await this.despacharAsync(ocorrencia, aluno);
+    } catch (err) {
+      this.logger.error(`Erro ao processar evento ocorrencia.criada [${ocorrencia.id}]: ${err}`);
+    }
   }
 
   @OnEvent('ocorrencia.validada')
   async aoOcorrenciaValidada({ ocorrencia, aluno }: { ocorrencia: Ocorrencia; aluno: any }) {
-    const alunoDaOcorrencia = aluno ?? ocorrencia.aluno ?? await this.alunosService.buscarPorId(ocorrencia.alunoId);
-    await this.despacharAsync(ocorrencia, alunoDaOcorrencia);
+    try {
+      const alunoDaOcorrencia = aluno ?? ocorrencia.aluno ?? await this.alunosService.buscarPorId(ocorrencia.alunoId);
+      await this.despacharAsync(ocorrencia, alunoDaOcorrencia);
+    } catch (err) {
+      this.logger.error(`Erro ao processar evento ocorrencia.validada [${ocorrencia.id}]: ${err}`);
+    }
   }
 
   async despacharAsync(ocorrencia: Ocorrencia, aluno: any): Promise<void> {
