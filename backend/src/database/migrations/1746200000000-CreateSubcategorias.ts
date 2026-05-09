@@ -22,14 +22,21 @@ export class CreateSubcategorias1746200000000 implements MigrationInterface {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // MySQL 8.0+: ADD COLUMN IF NOT EXISTS é seguro para re-runs
-    await queryRunner.query(`
-      ALTER TABLE ocorrencias
-        ADD COLUMN IF NOT EXISTS subcategoria_id VARCHAR(36) NULL AFTER subcategoria
+    // MySQL < 8.0.29 não aceita ADD COLUMN IF NOT EXISTS — usar INFORMATION_SCHEMA
+    const subcategoriaCol = await queryRunner.query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ocorrencias'
+        AND COLUMN_NAME = 'subcategoria_id'
     `);
+    if (!subcategoriaCol.length) {
+      await queryRunner.query(`
+        ALTER TABLE ocorrencias
+          ADD COLUMN subcategoria_id VARCHAR(36) NULL AFTER subcategoria
+      `);
+    }
 
     // Adicionar FK apenas se ainda não existir
-    const [fkRows]: any[] = await queryRunner.query(`
+    const fkRows = await queryRunner.query(`
       SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ocorrencias'
         AND CONSTRAINT_NAME = 'fk_oc_subcategoria'
