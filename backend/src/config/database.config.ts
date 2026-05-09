@@ -11,7 +11,8 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
   synchronize: false,
-  migrationsRun: true,   // executa migrations pendentes automaticamente ao iniciar
+  // true por padrão; defina DB_MIGRATIONS_RUN=false para não rodar migrations ao iniciar (rodar manualmente com CLI)
+  migrationsRun: config.get<string>('DB_MIGRATIONS_RUN', 'true') === 'true',
   logging: config.get('NODE_ENV') === 'development',
   charset: 'utf8mb4',
 });
