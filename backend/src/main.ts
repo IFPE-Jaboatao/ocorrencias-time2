@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory }                   from '@nestjs/core';
-import { Logger, ValidationPipe }        from '@nestjs/common';
+import { ValidationPipe }        from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet                             from 'helmet';
 import cookieParser                        from 'cookie-parser';
@@ -10,13 +10,7 @@ import { validationExceptionFactory }   from './common/utils/validation-messages
 import { CsrfMiddleware }                from './common/middleware/csrf.middleware';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, { logger });
-
-  logger.log(
-    `DB config — host=${process.env.DB_HOST ?? '(unset)'} port=${process.env.DB_PORT ?? '(unset)'} user=${process.env.DB_USER ?? '(unset)'} database=${process.env.DB_NAME ?? '(unset)'} password=${process.env.DB_PASS ? '***' : '(unset)'}`,
-  );
-
+  const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
 
   app.use(helmet());
