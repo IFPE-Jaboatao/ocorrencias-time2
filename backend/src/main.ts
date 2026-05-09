@@ -58,7 +58,7 @@ async function bootstrap() {
   app.use(new CsrfMiddleware().use.bind(new CsrfMiddleware()));
 
 
-  await app.listen('0.0.0.0', process.env.PORT ?? 3001);
+  await app.listen('0.0.0.0', Number(process.env.PORT ?? 3001));
 }
 
 bootstrap();
