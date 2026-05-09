@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory }                   from '@nestjs/core';
-import { ValidationPipe }                from '@nestjs/common';
+import { Logger, ValidationPipe }        from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet                             from 'helmet';
 import cookieParser                        from 'cookie-parser';
@@ -10,7 +10,8 @@ import { validationExceptionFactory }   from './common/utils/validation-messages
 import { CsrfMiddleware }                from './common/middleware/csrf.middleware';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule, { logger });
 
   app.enableShutdownHooks();
 
@@ -58,12 +59,9 @@ async function bootstrap() {
   // CSRF middleware — valida X-CSRF-Token em todas as mutações
   app.use(new CsrfMiddleware().use.bind(new CsrfMiddleware()));
 
-  console.log('DB_HOST:', process.env.DB_HOST);
-  console.log('DB_PORT:', process.env.DB_PORT);
-  console.log('DB_USER:', process.env.DB_USER);
-  console.log('DB_PASS:', process.env.DB_PASS);
-  console.log('DB_NAME:', process.env.DB_NAME);
-  console.log('-------------------------------');
+  logger.log(
+    `DB config — host=${process.env.DB_HOST ?? '(unset)'} port=${process.env.DB_PORT ?? '(unset)'} user=${process.env.DB_USER ?? '(unset)'} database=${process.env.DB_NAME ?? '(unset)'} password=${process.env.DB_PASS ? '***' : '(unset)'}`,
+  );
   await app.listen(process.env.PORT ?? 3001);
 }
 
