@@ -13,6 +13,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { logger });
 
+  logger.log(
+    `DB config — host=${process.env.DB_HOST ?? '(unset)'} port=${process.env.DB_PORT ?? '(unset)'} user=${process.env.DB_USER ?? '(unset)'} database=${process.env.DB_NAME ?? '(unset)'} password=${process.env.DB_PASS ? '***' : '(unset)'}`,
+  );
+
   app.enableShutdownHooks();
 
   app.use(helmet());
@@ -59,9 +63,7 @@ async function bootstrap() {
   // CSRF middleware — valida X-CSRF-Token em todas as mutações
   app.use(new CsrfMiddleware().use.bind(new CsrfMiddleware()));
 
-  logger.log(
-    `DB config — host=${process.env.DB_HOST ?? '(unset)'} port=${process.env.DB_PORT ?? '(unset)'} user=${process.env.DB_USER ?? '(unset)'} database=${process.env.DB_NAME ?? '(unset)'} password=${process.env.DB_PASS ? '***' : '(unset)'}`,
-  );
+
   await app.listen(process.env.PORT ?? 3001);
 }
 
